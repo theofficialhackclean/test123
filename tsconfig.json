@@ -1,28 +1,23 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
+    "target": "es2021",
+    "lib": ["es2021", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
+    "declaration": true,
+    "outDir": "./lib",
     "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "noFallthroughCasesInSwitch": true,
-    "module": "esnext",
-    "moduleResolution": "node",
+    "baseUrl": "src",
+    "experimentalDecorators": true,
+    "isolatedModules": false,
+    "skipLibCheck": true,
     "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
-    "baseUrl": "./src",
     "paths": {
       "@/*": ["./*"],
-      "@sozialhelden/ietf-language-tags": [
-        "../node_modules/@sozialhelden/ietf-language-tags/dist/cjs"
-      ]
-    },
-    "types": ["vite/client", "vite-plugin-pwa/vanillajs"]
+      "@entrypoint": ["./index.ts"]
+    }
   },
-  "include": ["src"]
+  "include": ["src", "vite.config.ts"],
+  "exclude": ["node_modules", "**/__test__"]
 }
