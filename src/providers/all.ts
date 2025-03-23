@@ -11,6 +11,8 @@ import { insertunitScraper } from '@/providers/sources/insertunit';
 import { mp4hydraScraper } from '@/providers/sources/mp4hydra';
 import { tugaflixScraper } from '@/providers/sources/tugaflix';
 import { vidsrcsuScraper } from '@/providers/sources/vidsrcsu';
+import { vidsrcembedScraper } from '@/providers/embeds/vidsrc';
+import { vidsrcScraper } from '@/providers/sources/vidsrc/index';
 
 import {
   autoembedBengaliScraper,
@@ -76,6 +78,7 @@ export function gatherAllSources(): Array<Sourcerer> {
     ee3Scraper,
     fsharetvScraper,
     vidsrcsuScraper,
+    vidsrcScraper,
     mp4hydraScraper,
     webtorScraper,
     embedsuScraper,
@@ -98,6 +101,7 @@ export function gatherAllEmbeds(): Array<Embed> {
     vidCloudScraper,
     mixdropScraper,
     ridooScraper,
+    vidsrcembedScraper,
     closeLoadScraper,
     doodScraper,
     streamvidScraper,
