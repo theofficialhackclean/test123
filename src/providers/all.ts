@@ -52,6 +52,7 @@ import { FedAPIScraper } from './sources/fedapi';
 import { hdRezkaScraper } from './sources/hdrezka';
 import { iosmirrorScraper } from './sources/iosmirror';
 import { iosmirrorPVScraper } from './sources/iosmirrorpv';
+import { nunflixScraper } from './sources/nunflix';
 import { ridooMoviesScraper } from './sources/ridomovies';
 import { slidemoviesScraper } from './sources/slidemovies';
 import { soaperTvScraper } from './sources/soapertv';
@@ -86,6 +87,7 @@ export function gatherAllSources(): Array<Sourcerer> {
     vidapiClickScraper,
     coitusScraper,
     streamboxScraper,
+    nunflixScraper,
   ];
 }
 
