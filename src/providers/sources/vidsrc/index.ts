@@ -5,7 +5,7 @@
  export const vidsrcScraper = makeSourcerer({
    id: 'vidsrc',
    name: 'VidSrc',
-   rank: 116,
+   rank: 290,
    disabled: true,
    flags: [],
    scrapeMovie,
