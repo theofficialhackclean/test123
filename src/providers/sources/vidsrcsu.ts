@@ -47,9 +47,9 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
   // REQUIRES A PROXY FOR MOST SERVERS set it up here https://github.com/Pasithea0/M3U8-Proxy
   const processedServers = await Promise.all(
     servers.map(async (server) => {
-      if (server.url.includes('orbitproxy.ru')) {
+      if (server.url.includes('orbitproxy')) {
         try {
-          const urlParts = server.url.split('orbitproxy.ru/');
+          const urlParts = server.url.split(/orbitproxy\.[^/]+\//);
           if (urlParts.length >= 2) {
             const encryptedPart = urlParts[1].split('.m3u8')[0];
 
