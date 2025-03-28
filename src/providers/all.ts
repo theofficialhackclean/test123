@@ -10,10 +10,24 @@ import { fsharetvScraper } from '@/providers/sources/fsharetv';
 import { insertunitScraper } from '@/providers/sources/insertunit';
 import { mp4hydraScraper } from '@/providers/sources/mp4hydra';
 import { tugaflixScraper } from '@/providers/sources/tugaflix';
+import { riveScraper } from '@/providers/sources/rive';
 import { vidsrcsuScraper } from '@/providers/sources/vidsrcsu';
 import { vidsrcembedScraper } from '@/providers/embeds/vidsrc';
 import { vidsrcScraper } from '@/providers/sources/vidsrc/index';
-
+import {
+  riveAsiacloudScraper,
+  riveEe3Scraper,
+  riveFastxScraper,
+  riveFilmechoScraper,
+  riveG1Scraper,
+  riveG2Scraper,
+  riveGhostScraper,
+  riveGuruScraper,
+  riveHydraxScraper,
+  riveKageScraper,
+  riveNovaScraper,
+  rivePutafilmeScraper,
+} from '@/providers/embeds/rive';
 import {
   autoembedBengaliScraper,
   autoembedEnglishScraper,
@@ -91,6 +105,7 @@ export function gatherAllSources(): Array<Sourcerer> {
     coitusScraper,
     streamboxScraper,
     nunflixScraper,
+    riveScraper,
   ];
 }
 
@@ -138,5 +153,17 @@ export function gatherAllEmbeds(): Array<Embed> {
     FedAPIPrivateScraper,
     FedAPISharedScraper,
     FedDBScraper,
+    riveAsiacloudScraper,
+     riveEe3Scraper,
+     riveFastxScraper,
+     riveFilmechoScraper,
+     riveG1Scraper,
+     riveG2Scraper,
+     riveGhostScraper,
+     riveGuruScraper,
+     riveHydraxScraper,
+     riveKageScraper,
+     riveNovaScraper,
+     rivePutafilmeScraper,
   ];
 }
