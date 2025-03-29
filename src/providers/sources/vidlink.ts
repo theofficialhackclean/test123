@@ -2,6 +2,9 @@ import { flags } from '@/entrypoint/utils/targets';
 import { SourcererOutput, makeSourcerer } from '@/providers/base';
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 import { NotFoundError } from '@/utils/errors';
+import { getValidQualityFromString } from '@/utils/qualities'; // Adjust import path as needed
+import { FileBasedStream } from '@/types/stream'; // Import your stream types
+
 const vidlinkBase = 'https://vidlink.pro';
 
 interface VidLinkStream {
@@ -24,11 +27,6 @@ const getVidLinkToken = (): string | null => {
     return null;
   }
 };
-
-function compareQualities(a: string, b: string): number {
-  const qualityOrder = ['4k', '1080', '720', '480', '360'];
-  return qualityOrder.indexOf(b) - qualityOrder.indexOf(a);
-}
 
 async function vidLinkScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
   const userToken = getVidLinkToken();
@@ -54,44 +52,34 @@ async function vidLinkScraper(ctx: ShowScrapeContext | MovieScrapeContext): Prom
     throw new NotFoundError('No streams found');
   }
 
-  const streams = apiRes.streams.reduce((acc: Record<string, string>, stream) => {
+  // Process streams and map to your quality system
+  const qualities: Partial<Record<'360' | '480' | '720' | '1080' | '4k', { type: 'mp4'; url: string }>> = {};
+
+  for (const stream of apiRes.streams) {
     const qualityMatch = stream.label.match(/(4K|2160p|1080p|720p|480p|360p)/i);
-    let qualityStr = '720'; // default quality
-    
-    if (qualityMatch) {
-      qualityStr = qualityMatch[0];
-    }
-
+    const qualityStr = qualityMatch ? qualityMatch[0] : '720p';
     const qualityKey = getValidQualityFromString(qualityStr);
-    if (qualityKey === 'unknown') return acc;
 
-    if (!acc[qualityKey] || compareQualities(qualityKey, Object.keys(acc)[0]) > 0) {
-      acc[qualityKey] = stream.file;
+    if (qualityKey !== 'unknown' && !qualities[qualityKey]) {
+      qualities[qualityKey] = {
+        type: 'mp4',
+        url: stream.file,
+      };
     }
-    return acc;
-  }, {});
+  }
 
-  const qualities: Record<string, { type: string; url: string }> = {};
-  const sortedQualities = Object.keys(streams).sort(compareQualities);
-
-  sortedQualities.forEach(quality => {
-    qualities[quality] = {
-      type: 'mp4',
-      url: streams[quality],
-    };
-  });
+  // Create the stream object
+  const stream: FileBasedStream = {
+    id: 'primary',
+    type: 'file',
+    qualities,
+    captions: [],
+    flags: [flags.CORS_ALLOWED],
+  };
 
   return {
     embeds: [],
-    stream: [
-      {
-        id: 'primary',
-        captions: [],
-        qualities,
-        type: 'file',
-        flags: [flags.CORS_ALLOWED],
-      },
-    ],
+    stream: [stream],
   };
 }
 
