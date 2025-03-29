@@ -2,8 +2,6 @@ import { flags } from '@/entrypoint/utils/targets';
 import { SourcererOutput, makeSourcerer } from '@/providers/base';
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 import { NotFoundError } from '@/utils/errors';
-import { getValidQualityFromString } from '@/utils/qualities'; // Import from correct location
-
 const vidlinkBase = 'https://vidlink.pro';
 
 interface VidLinkStream {
