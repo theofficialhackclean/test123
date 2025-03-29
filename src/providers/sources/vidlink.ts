@@ -26,10 +26,32 @@ const getVidLinkToken = (): string | null => {
   }
 };
 
+function getValidQualityFromString(quality: string): string {
+  switch (quality.toLowerCase().replace('p', '')) {
+    case '360':
+      return '360';
+    case '480':
+      return '480';
+    case '720':
+      return '720';
+    case '1080':
+      return '1080';
+    case '2160':
+    case '4k':
+      return '4k';
+    default:
+      return 'unknown';
+  }
+}
+
+function compareQualities(a: string, b: string): number {
+  const qualityOrder = ['4k', '1080', '720', '480', '360'];
+  return qualityOrder.indexOf(b) - qualityOrder.indexOf(a);
+}
+
 async function vidLinkScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
   const userToken = getVidLinkToken();
   
-  // Construct the appropriate URL based on media type
   let apiUrl: string;
   if (ctx.media.type === 'movie') {
     apiUrl = `${vidlinkBase}/api/movie/${ctx.media.tmdbId}`;
@@ -37,7 +59,6 @@ async function vidLinkScraper(ctx: ShowScrapeContext | MovieScrapeContext): Prom
     apiUrl = `${vidlinkBase}/api/tv/${ctx.media.tmdbId}?season=${ctx.media.season.number}&episode=${ctx.media.episode.number}`;
   }
 
-  // Add token if available
   if (userToken) {
     apiUrl += `${apiUrl.includes('?') ? '&' : '?'}token=${userToken}`;
   }
@@ -52,42 +73,29 @@ async function vidLinkScraper(ctx: ShowScrapeContext | MovieScrapeContext): Prom
     throw new NotFoundError('No streams found');
   }
 
-  // Process streams to find the best quality
   const streams = apiRes.streams.reduce((acc: Record<string, string>, stream) => {
-    let qualityKey: number | string;
-    
-    // Parse quality from label (e.g., "1080p", "720p", "4K")
     const qualityMatch = stream.label.match(/(4K|2160p|1080p|720p|480p|360p)/i);
+    let qualityStr = '720'; // default quality
+    
     if (qualityMatch) {
-      const qualityStr = qualityMatch[0].toLowerCase();
-      if (qualityStr.includes('4k') || qualityStr.includes('2160p')) {
-        qualityKey = 2160;
-      } else {
-        qualityKey = parseInt(qualityStr.replace('p', ''), 10);
-      }
-    } else {
-      // Default quality if not specified
-      qualityKey = 720;
+      qualityStr = qualityMatch[0];
     }
 
-    if (Number.isNaN(qualityKey) return acc;
-    if (!acc[qualityKey] || qualityKey > parseInt(Object.keys(acc)[0], 10)) {
+    const qualityKey = getValidQualityFromString(qualityStr);
+    if (qualityKey === 'unknown') return acc;
+
+    if (!acc[qualityKey] || compareQualities(qualityKey, Object.keys(acc)[0]) > 0) {
       acc[qualityKey] = stream.file;
     }
     return acc;
   }, {});
 
-  // Sort streams by quality (highest first)
-  const sortedQualities = Object.keys(streams)
-    .map(Number)
-    .sort((a, b) => b - a);
-
-  // Prepare the output with available qualities
   const qualities: Record<string, { type: string; url: string }> = {};
-  
+  const sortedQualities = Object.keys(streams).sort(compareQualities);
+
   sortedQualities.forEach(quality => {
     qualities[quality] = {
-      type: 'mp4', // Assuming MP4, adjust if needed
+      type: 'mp4',
       url: streams[quality],
     };
   });
@@ -110,7 +118,7 @@ export const vidLinkProvider = makeSourcerer({
   id: 'vidlink',
   name: 'VidLink',
   rank: 150,
-  disabled: false, // Don't disable based on token since it's optional
+  disabled: false,
   flags: [flags.CORS_ALLOWED],
   scrapeMovie: vidLinkScraper,
   scrapeShow: vidLinkScraper,
