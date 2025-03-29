@@ -2,6 +2,7 @@ import { flags } from '@/entrypoint/utils/targets';
 import { SourcererOutput, makeSourcerer } from '@/providers/base';
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 import { NotFoundError } from '@/utils/errors';
+import { getValidQualityFromString } from '@/utils/qualities'; // Import from correct location
 
 const vidlinkBase = 'https://vidlink.pro';
 
@@ -25,24 +26,6 @@ const getVidLinkToken = (): string | null => {
     return null;
   }
 };
-
-function getValidQualityFromString(quality: string): string {
-  switch (quality.toLowerCase().replace('p', '')) {
-    case '360':
-      return '360';
-    case '480':
-      return '480';
-    case '720':
-      return '720';
-    case '1080':
-      return '1080';
-    case '2160':
-    case '4k':
-      return '4k';
-    default:
-      return 'unknown';
-  }
-}
 
 function compareQualities(a: string, b: string): number {
   const qualityOrder = ['4k', '1080', '720', '480', '360'];
