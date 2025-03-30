@@ -5,18 +5,18 @@ const vidlinkProviders = [
   {
     id: 'vidlink-1',
     name: 'VidLink Server 1',
-    rank: 36,
+    rank: 304,
   },
   {
     id: 'vidlink-2',
     name: 'VidLink Server 2',
-    rank: 35,
+    rank: 305,
     disabled: false,
   },
   {
     id: 'vidlink-4k',
     name: 'VidLink 4K Server',
-    rank: 40,
+    rank: 306,
   },
 ];
 
