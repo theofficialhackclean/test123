@@ -50,38 +50,16 @@ async function vidLinkScraper(ctx: ShowScrapeContext | MovieScrapeContext): Prom
     throw new NotFoundError('No streams found');
   }
 
-  // Process streams and map to your quality system
-  const qualities: Partial<Record<'360' | '480' | '720' | '1080' | '4k', { type: 'mp4'; url: string }>> = {};
-
-  for (const stream of apiRes.streams) {
-    let qualityKey: '360' | '480' | '720' | '1080' | '4k' | undefined;
-    const qualityLabel = stream.label.toLowerCase();
-
-    if (qualityLabel.includes('4k') || qualityLabel.includes('2160')) {
-      qualityKey = '4k';
-    } else if (qualityLabel.includes('1080')) {
-      qualityKey = '1080';
-    } else if (qualityLabel.includes('720')) {
-      qualityKey = '720';
-    } else if (qualityLabel.includes('480')) {
-      qualityKey = '480';
-    } else if (qualityLabel.includes('360')) {
-      qualityKey = '360';
-    }
-
-    if (qualityKey && !qualities[qualityKey]) {
-      qualities[qualityKey] = {
-        type: 'mp4',
-        url: stream.file,
-      };
-    }
-  }
-
-  // Create the stream object
+  // Create the stream object with all available streams
   const stream = {
     id: 'primary',
     type: 'file' as const,
-    qualities,
+    qualities: {
+      default: {
+        type: 'mp4',
+        url: apiRes.streams[0].file, // Using first stream as default
+      },
+    },
     captions: [],
     flags: [flags.CORS_ALLOWED],
   };
