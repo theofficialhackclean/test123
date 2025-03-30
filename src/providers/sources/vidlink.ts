@@ -2,8 +2,6 @@ import { flags } from '@/entrypoint/utils/targets';
 import { SourcererOutput, makeSourcerer } from '@/providers/base';
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 import { NotFoundError } from '@/utils/errors';
-import { getValidQualityFromString } from '@/utils/qualities'; // Adjust import path as needed
-import { FileBasedStream } from '@/types/stream'; // Import your stream types
 
 const vidlinkBase = 'https://vidlink.pro';
 
@@ -52,34 +50,71 @@ async function vidLinkScraper(ctx: ShowScrapeContext | MovieScrapeContext): Prom
     throw new NotFoundError('No streams found');
   }
 
-  // Process streams and map to your quality system
-  const qualities: Partial<Record<'360' | '480' | '720' | '1080' | '4k', { type: 'mp4'; url: string }>> = {};
-
+  // Find the best quality stream (prioritizing 4K/2160p)
+  let bestStream = apiRes.streams[0];
   for (const stream of apiRes.streams) {
-    const qualityMatch = stream.label.match(/(4K|2160p|1080p|720p|480p|360p)/i);
-    const qualityStr = qualityMatch ? qualityMatch[0] : '720p';
-    const qualityKey = getValidQualityFromString(qualityStr);
-
-    if (qualityKey !== 'unknown' && !qualities[qualityKey]) {
-      qualities[qualityKey] = {
-        type: 'mp4',
-        url: stream.file,
-      };
+    if (stream.label.includes('4K') || stream.label.includes('2160p')) {
+      bestStream = stream;
+      break;
     }
   }
 
-  // Create the stream object
-  const stream: FileBasedStream = {
-    id: 'primary',
-    type: 'file',
-    qualities,
-    captions: [],
-    flags: [flags.CORS_ALLOWED],
-  };
+  // Map all available qualities
+  const streams = apiRes.streams.reduce((acc: Record<string, string>, stream) => {
+    let qualityKey: number;
+    if (stream.label.includes('4K') || stream.label.includes('2160p')) {
+      qualityKey = 2160;
+    } else {
+      qualityKey = parseInt(stream.label.replace('p', ''), 10) || 720;
+    }
+
+    if (Number.isNaN(qualityKey) || acc[qualityKey]) return acc;
+    acc[qualityKey] = stream.file;
+    return acc;
+  }, {});
 
   return {
     embeds: [],
-    stream: [stream],
+    stream: [
+      {
+        id: 'primary',
+        captions: [],
+        qualities: {
+          ...(streams[2160] && {
+            '4k': {
+              type: 'mp4',
+              url: streams[2160],
+            },
+          }),
+          ...(streams[1080] && {
+            1080: {
+              type: 'mp4',
+              url: streams[1080],
+            },
+          }),
+          ...(streams[720] && {
+            720: {
+              type: 'mp4',
+              url: streams[720],
+            },
+          }),
+          ...(streams[480] && {
+            480: {
+              type: 'mp4',
+              url: streams[480],
+            },
+          }),
+          ...(streams[360] && {
+            360: {
+              type: 'mp4',
+              url: streams[360],
+            },
+          }),
+        },
+        type: 'file',
+        flags: [flags.CORS_ALLOWED],
+      },
+    ],
   };
 }
 
