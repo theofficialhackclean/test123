@@ -17,34 +17,41 @@ interface VidLinkResponse {
   message?: string;
 }
 
-async function getVidLinkCookies(ctx: ShowScrapeContext | MovieScrapeContext): Promise<string> {
-  // First make a HEAD request to get initial cookies
-  const cookieRes = await ctx.proxiedFetcher(vidlinkBase, {
-    method: 'HEAD',
+async function simulateBrowserVisit(ctx: ShowScrapeContext | MovieScrapeContext): Promise<Record<string, string>> {
+  // First visit the main page to establish session
+  const homeResponse = await ctx.proxiedFetcher(vidlinkBase, {
+    method: 'GET',
     headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+      'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120"',
     }
   });
 
-  // Extract cookies from response headers
-  const cookies = cookieRes.headers?.['set-cookie'] || [];
-  return Array.isArray(cookies) ? cookies.join('; ') : cookies;
-}
+  // Extract cookies and build headers for subsequent requests
+  const cookies = homeResponse.headers?.['set-cookie'] || [];
+  const cookieString = Array.isArray(cookies) ? cookies.join('; ') : cookies;
 
-async function vidLinkScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
-  // Get initial cookies first
-  const cookies = await getVidLinkCookies(ctx);
-
-  const headers = {
-    'Accept': 'application/json',
-    'Cookie': cookies,
-    'Referer': `${vidlinkBase}/`,
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+  return {
+    'Cookie': cookieString,
+    'Referer': vidlinkBase,
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     'X-Requested-With': 'XMLHttpRequest',
     'Sec-Fetch-Dest': 'empty',
     'Sec-Fetch-Mode': 'cors',
     'Sec-Fetch-Site': 'same-origin',
+    'Accept': 'application/json',
+    'Accept-Encoding': 'gzip, deflate, br',
   };
+}
+
+async function vidLinkScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
+  // Simulate browser visit to establish session
+  const headers = await simulateBrowserVisit(ctx);
+
+  // Add random delay to mimic human behavior
+  await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 2000));
 
   let apiUrl: string;
   if (ctx.media.type === 'movie') {
@@ -54,67 +61,39 @@ async function vidLinkScraper(ctx: ShowScrapeContext | MovieScrapeContext): Prom
   }
 
   try {
-    // Initial request to get CSRF token if needed
-    const initRes = await ctx.proxiedFetcher(vidlinkBase, {
+    // Make the API request with proper browser-like headers
+    const apiRes = await ctx.proxiedFetcher<VidLinkResponse>(apiUrl, {
       headers,
       method: 'GET'
     });
 
-    // Update cookies if new ones were set
-    const newCookies = initRes.headers?.['set-cookie'];
-    if (newCookies) {
-      headers['Cookie'] = Array.isArray(newCookies) 
-        ? newCookies.join('; ') 
-        : newCookies;
+    if (!apiRes?.success) {
+      throw new NotFoundError(apiRes?.message || 'VidLink API request failed');
     }
 
-    // Main API request with retry logic
-    let retries = 3;
-    while (retries > 0) {
-      try {
-        const apiRes = await ctx.proxiedFetcher<VidLinkResponse>(apiUrl, {
-          headers,
-          method: 'GET'
-        });
-
-        if (!apiRes?.success) {
-          throw new NotFoundError(apiRes?.message || 'VidLink API request failed');
-        }
-
-        if (!apiRes.streams?.length) {
-          throw new NotFoundError('No streams available');
-        }
-
-        return {
-          embeds: [],
-          stream: [{
-            id: 'primary',
-            type: 'file',
-            qualities: Object.fromEntries(
-              apiRes.streams.map((stream, i) => [
-                `quality_${i}`,
-                { type: 'mp4', url: stream.file }
-              ])
-            ),
-            captions: [],
-            flags: [flags.CORS_ALLOWED],
-          }],
-        };
-      } catch (error) {
-        retries--;
-        if (retries === 0) throw error;
-        await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay between retries
-      }
+    if (!apiRes.streams?.length) {
+      throw new NotFoundError('No streams available');
     }
 
-    throw new Error('Max retries reached');
+    return {
+      embeds: [],
+      stream: [{
+        id: 'primary',
+        type: 'file',
+        qualities: Object.fromEntries(
+          apiRes.streams.map((stream, i) => [
+            `quality_${i}`,
+            { type: 'mp4', url: stream.file }
+          ])
+        ),
+        captions: [],
+        flags: [flags.CORS_ALLOWED],
+      }],
+    };
   } catch (error) {
     if (error instanceof Error) {
-      if (error.message.includes('security solution')) {
-        throw new Error('VidLink blocked the request. Try using different IP or waiting.');
-      }
-      if (error.message.includes('403')) {
-        throw new Error('VidLink access forbidden. Cookies may have expired.');
+      if (error.message.includes('blocked') || error.message.includes('security')) {
+        throw new Error('VidLink blocked the request. Try using residential proxies or rotating IPs.');
       }
     }
     throw error;
