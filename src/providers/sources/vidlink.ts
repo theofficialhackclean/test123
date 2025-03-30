@@ -23,8 +23,7 @@ async function getVidLinkCookies(ctx: ShowScrapeContext | MovieScrapeContext): P
     method: 'HEAD',
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-    },
-    responseType: 'text',
+    }
   });
 
   // Extract cookies from response headers
@@ -58,8 +57,7 @@ async function vidLinkScraper(ctx: ShowScrapeContext | MovieScrapeContext): Prom
     // Initial request to get CSRF token if needed
     const initRes = await ctx.proxiedFetcher(vidlinkBase, {
       headers,
-      method: 'GET',
-      responseType: 'text',
+      method: 'GET'
     });
 
     // Update cookies if new ones were set
@@ -70,41 +68,46 @@ async function vidLinkScraper(ctx: ShowScrapeContext | MovieScrapeContext): Prom
         : newCookies;
     }
 
-    // Main API request
-    const apiRes = await ctx.proxiedFetcher<VidLinkResponse>(apiUrl, {
-      headers,
-      method: 'GET',
-      timeout: 15000,
-      retry: {
-        limit: 3,
-        methods: ['GET'],
-        statusCodes: [403, 429, 500, 502, 503, 504],
-      },
-    });
+    // Main API request with retry logic
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        const apiRes = await ctx.proxiedFetcher<VidLinkResponse>(apiUrl, {
+          headers,
+          method: 'GET'
+        });
 
-    if (!apiRes?.success) {
-      throw new NotFoundError(apiRes?.message || 'VidLink API request failed');
+        if (!apiRes?.success) {
+          throw new NotFoundError(apiRes?.message || 'VidLink API request failed');
+        }
+
+        if (!apiRes.streams?.length) {
+          throw new NotFoundError('No streams available');
+        }
+
+        return {
+          embeds: [],
+          stream: [{
+            id: 'primary',
+            type: 'file',
+            qualities: Object.fromEntries(
+              apiRes.streams.map((stream, i) => [
+                `quality_${i}`,
+                { type: 'mp4', url: stream.file }
+              ])
+            ),
+            captions: [],
+            flags: [flags.CORS_ALLOWED],
+          }],
+        };
+      } catch (error) {
+        retries--;
+        if (retries === 0) throw error;
+        await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay between retries
+      }
     }
 
-    if (!apiRes.streams?.length) {
-      throw new NotFoundError('No streams available');
-    }
-
-    return {
-      embeds: [],
-      stream: [{
-        id: 'primary',
-        type: 'file',
-        qualities: Object.fromEntries(
-          apiRes.streams.map((stream, i) => [
-            `quality_${i}`,
-            { type: 'mp4', url: stream.file }
-          ])
-        ),
-        captions: [],
-        flags: [flags.CORS_ALLOWED],
-      }],
-    };
+    throw new Error('Max retries reached');
   } catch (error) {
     if (error instanceof Error) {
       if (error.message.includes('security solution')) {
