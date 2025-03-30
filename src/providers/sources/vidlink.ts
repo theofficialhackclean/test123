@@ -17,41 +17,71 @@ interface VidLinkResponse {
   message?: string;
 }
 
-async function simulateBrowserVisit(ctx: ShowScrapeContext | MovieScrapeContext): Promise<Record<string, string>> {
-  // First visit the main page to establish session
+async function emulateBrowserSession(ctx: ShowScrapeContext | MovieScrapeContext) {
+  // Step 1: Initial page visit to establish session
+  const sessionHeaders = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+    'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120"',
+    'Sec-Ch-Ua-Mobile': '?0',
+    'Sec-Ch-Ua-Platform': '"Windows"',
+  };
+
+  // Initial document request
   const homeResponse = await ctx.proxiedFetcher(vidlinkBase, {
     method: 'GET',
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-      'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120"',
-    }
+    headers: sessionHeaders
   });
 
-  // Extract cookies and build headers for subsequent requests
+  // Step 2: Extract and set cookies
   const cookies = homeResponse.headers?.['set-cookie'] || [];
   const cookieString = Array.isArray(cookies) ? cookies.join('; ') : cookies;
 
-  return {
+  // Step 3: Request static assets to build complete browser fingerprint
+  const assetHeaders = {
+    ...sessionHeaders,
     'Cookie': cookieString,
     'Referer': vidlinkBase,
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'X-Requested-With': 'XMLHttpRequest',
-    'Sec-Fetch-Dest': 'empty',
-    'Sec-Fetch-Mode': 'cors',
-    'Sec-Fetch-Site': 'same-origin',
-    'Accept': 'application/json',
-    'Accept-Encoding': 'gzip, deflate, br',
+    'Accept': 'image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+  };
+
+  await Promise.all([
+    ctx.proxiedFetcher(`${vidlinkBase}/favicon.ico`, {
+      method: 'GET',
+      headers: assetHeaders
+    }),
+    ctx.proxiedFetcher(`${vidlinkBase}/assets/js/app.js`, {
+      method: 'GET',
+      headers: assetHeaders
+    }),
+    ctx.proxiedFetcher(`${vidlinkBase}/assets/css/style.css`, {
+      method: 'GET',
+      headers: assetHeaders
+    })
+  ]);
+
+  return {
+    cookies: cookieString,
+    headers: {
+      ...sessionHeaders,
+      'Cookie': cookieString,
+      'Referer': vidlinkBase,
+      'X-Requested-With': 'XMLHttpRequest',
+      'Sec-Fetch-Dest': 'empty',
+      'Sec-Fetch-Mode': 'cors',
+      'Sec-Fetch-Site': 'same-origin',
+      'Accept': 'application/json',
+    }
   };
 }
 
 async function vidLinkScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
-  // Simulate browser visit to establish session
-  const headers = await simulateBrowserVisit(ctx);
+  // Establish browser session
+  const { cookies, headers } = await emulateBrowserSession(ctx);
 
-  // Add random delay to mimic human behavior
-  await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 2000));
+  // Add random delay to mimic human reading time
+  await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 3000));
 
   let apiUrl: string;
   if (ctx.media.type === 'movie') {
@@ -61,7 +91,7 @@ async function vidLinkScraper(ctx: ShowScrapeContext | MovieScrapeContext): Prom
   }
 
   try {
-    // Make the API request with proper browser-like headers
+    // Make API request with full browser context
     const apiRes = await ctx.proxiedFetcher<VidLinkResponse>(apiUrl, {
       headers,
       method: 'GET'
@@ -93,7 +123,13 @@ async function vidLinkScraper(ctx: ShowScrapeContext | MovieScrapeContext): Prom
   } catch (error) {
     if (error instanceof Error) {
       if (error.message.includes('blocked') || error.message.includes('security')) {
-        throw new Error('VidLink blocked the request. Try using residential proxies or rotating IPs.');
+        throw new Error(`
+          VidLink blocked the request. Additional measures needed:
+          1. Use residential proxies (Luminati, Smartproxy)
+          2. Implement request throttling (3-5s between requests)
+          3. Rotate User-Agents and fingerprints
+          4. Consider using Puppeteer with stealth plugin
+        `);
       }
     }
     throw error;
@@ -103,7 +139,7 @@ async function vidLinkScraper(ctx: ShowScrapeContext | MovieScrapeContext): Prom
 export const vidLinkProvider = makeSourcerer({
   id: 'vidlink',
   name: 'VidLink',
-  rank: 310,
+  rank:  310,
   disabled: false,
   flags: [flags.CORS_ALLOWED],
   scrapeMovie: vidLinkScraper,
