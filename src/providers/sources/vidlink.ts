@@ -73,7 +73,7 @@ async function vidLinkScraper(ctx: ShowScrapeContext | MovieScrapeContext): Prom
 export const vidLinkProvider = makeSourcerer({
   id: 'vidlink',
   name: 'VidLink',
-  rank: 300,
+  rank: 310,
   disabled: false,
   flags: [flags.CORS_ALLOWED],
   scrapeMovie: vidLinkScraper,
