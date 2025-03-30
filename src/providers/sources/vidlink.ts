@@ -55,9 +55,9 @@ async function vidLinkScraper(ctx: ShowScrapeContext | MovieScrapeContext): Prom
     id: 'primary',
     type: 'file' as const,
     qualities: {
-      default: {
-        type: 'mp4',
-        url: apiRes.streams[0].file, // Using first stream as default
+      unknown: { // Changed from 'default' to 'unknown' to match expected type
+        type: 'mp4' as const,
+        url: apiRes.streams[0].file,
       },
     },
     captions: [],
