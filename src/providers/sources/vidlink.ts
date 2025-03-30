@@ -50,71 +50,45 @@ async function vidLinkScraper(ctx: ShowScrapeContext | MovieScrapeContext): Prom
     throw new NotFoundError('No streams found');
   }
 
-  // Find the best quality stream (prioritizing 4K/2160p)
-  let bestStream = apiRes.streams[0];
+  // Process streams and map to your quality system
+  const qualities: Partial<Record<'360' | '480' | '720' | '1080' | '4k', { type: 'mp4'; url: string }>> = {};
+
   for (const stream of apiRes.streams) {
-    if (stream.label.includes('4K') || stream.label.includes('2160p')) {
-      bestStream = stream;
-      break;
+    let qualityKey: '360' | '480' | '720' | '1080' | '4k' | undefined;
+    const qualityLabel = stream.label.toLowerCase();
+
+    if (qualityLabel.includes('4k') || qualityLabel.includes('2160')) {
+      qualityKey = '4k';
+    } else if (qualityLabel.includes('1080')) {
+      qualityKey = '1080';
+    } else if (qualityLabel.includes('720')) {
+      qualityKey = '720';
+    } else if (qualityLabel.includes('480')) {
+      qualityKey = '480';
+    } else if (qualityLabel.includes('360')) {
+      qualityKey = '360';
+    }
+
+    if (qualityKey && !qualities[qualityKey]) {
+      qualities[qualityKey] = {
+        type: 'mp4',
+        url: stream.file,
+      };
     }
   }
 
-  // Map all available qualities
-  const streams = apiRes.streams.reduce((acc: Record<string, string>, stream) => {
-    let qualityKey: number;
-    if (stream.label.includes('4K') || stream.label.includes('2160p')) {
-      qualityKey = 2160;
-    } else {
-      qualityKey = parseInt(stream.label.replace('p', ''), 10) || 720;
-    }
-
-    if (Number.isNaN(qualityKey) || acc[qualityKey]) return acc;
-    acc[qualityKey] = stream.file;
-    return acc;
-  }, {});
+  // Create the stream object
+  const stream = {
+    id: 'primary',
+    type: 'file' as const,
+    qualities,
+    captions: [],
+    flags: [flags.CORS_ALLOWED],
+  };
 
   return {
     embeds: [],
-    stream: [
-      {
-        id: 'primary',
-        captions: [],
-        qualities: {
-          ...(streams[2160] && {
-            '4k': {
-              type: 'mp4',
-              url: streams[2160],
-            },
-          }),
-          ...(streams[1080] && {
-            1080: {
-              type: 'mp4',
-              url: streams[1080],
-            },
-          }),
-          ...(streams[720] && {
-            720: {
-              type: 'mp4',
-              url: streams[720],
-            },
-          }),
-          ...(streams[480] && {
-            480: {
-              type: 'mp4',
-              url: streams[480],
-            },
-          }),
-          ...(streams[360] && {
-            360: {
-              type: 'mp4',
-              url: streams[360],
-            },
-          }),
-        },
-        type: 'file',
-        flags: [flags.CORS_ALLOWED],
-      },
-    ],
+    stream: [stream],
   };
 }
 
