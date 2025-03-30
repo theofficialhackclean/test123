@@ -3,69 +3,87 @@ import { SourcererOutput, makeSourcerer } from '@/providers/base';
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 import { NotFoundError } from '@/utils/errors';
 
-const vidlinkBase = 'https://vidlink.pro';
+const mamaApiBase = 'https://mama.up.railway.app/api/showbox';
 
-interface VidLinkStream {
-  file: string;
-  label: string;
+interface StreamItem {
+  filename: string;
+  quality: string;
   type: string;
+  size: string;
+  player_streams: Array<{
+    file: string;
+    quality: string;
+    type: string;
+  }>;
+  direct_download: string;
 }
 
-interface VidLinkResponse {
+interface StreamData {
   success: boolean;
-  streams?: VidLinkStream[];
-  message?: string;
+  tmdb_id: string;
+  type: 'movie' | 'tv';
+  title: string;
+  year: number;
+  showbox_id: string;
+  febbox_url?: string;
+  season?: number;
+  episode?: number;
+  streams: StreamItem | StreamItem[];
+  seasons?: Record<string, any>;
+  source: string;
 }
 
-const getVidLinkToken = (): string | null => {
+const getUserToken = (): string | null => {
   try {
-    return typeof window !== 'undefined' ? window.localStorage.getItem('vidlink_token') : null;
+    return typeof window !== 'undefined' ? window.localStorage.getItem('febbox_ui_token') : null;
   } catch (e) {
     console.warn('Unable to access localStorage:', e);
     return null;
   }
 };
 
-async function vidLinkScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
-  const userToken = getVidLinkToken();
-  
-  let apiUrl: string;
-  if (ctx.media.type === 'movie') {
-    apiUrl = `${vidlinkBase}/api/movie/${ctx.media.tmdbId}`;
-  } else {
-    apiUrl = `${vidlinkBase}/api/tv/${ctx.media.tmdbId}?season=${ctx.media.season.number}&episode=${ctx.media.episode.number}`;
+async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
+  const userToken = getUserToken();
+
+  const apiUrl =
+    ctx.media.type === 'movie'
+      ? `${mamaApiBase}/movie/${ctx.media.tmdbId}&token=${userToken}`
+      : `${mamaApiBase}/tv/${ctx.media.tmdbId}?season=${ctx.media.season.number}&episode=${ctx.media.episode.number}&token=${userToken}`;
+
+  const apiRes = await ctx.proxiedFetcher(apiUrl);
+
+  if (!apiRes) {
+    throw new NotFoundError('No response from API');
   }
 
-  if (userToken) {
-    apiUrl += `${apiUrl.includes('?') ? '&' : '?'}token=${userToken}`;
-  }
+  const data = (await apiRes) as StreamData;
 
-  const apiRes = await ctx.proxiedFetcher<VidLinkResponse>(apiUrl);
-
-  if (!apiRes || !apiRes.success) {
-    throw new NotFoundError(apiRes?.message || 'No response from VidLink API');
-  }
-
-  if (!apiRes.streams || apiRes.streams.length === 0) {
+  if (!data.success) {
     throw new NotFoundError('No streams found');
   }
 
-  // Find the best quality stream (prioritizing 4K/2160p)
-  let bestStream = apiRes.streams[0];
-  for (const stream of apiRes.streams) {
-    if (stream.label.includes('4K') || stream.label.includes('2160p')) {
-      bestStream = stream;
+  const streamItems = Array.isArray(data.streams) ? data.streams : [data.streams];
+
+  if (streamItems.length === 0 || !streamItems[0].player_streams) {
+    throw new NotFoundError('No valid streams found');
+  }
+
+  let bestStreamItem = streamItems[0];
+  for (const item of streamItems) {
+    if (item.quality.includes('4K') || item.quality.includes('2160p')) {
+      bestStreamItem = item;
       break;
     }
   }
 
-  // Map all available qualities
-  const streams = apiRes.streams.reduce((acc: Record<string, string>, stream) => {
-    let qualityKey: number;
-    if (stream.label.includes('4K') || stream.label.includes('2160p')) {
+  const streams = bestStreamItem.player_streams.reduce((acc: Record<string, string>, stream) => {
+    let qualityKey: number | string;
+    if (stream.quality === '4K' || stream.quality.includes('4K')) {
       qualityKey = 2160;
+    } else if (stream.quality === 'ORG' || stream.quality.includes('ORG')) {
+      return acc; // Skip original quality
     } else {
-      qualityKey = parseInt(stream.label.replace('p', ''), 10) || 720;
+      qualityKey = parseInt(stream.quality.replace('P', ''), 10);
     }
 
     if (Number.isNaN(qualityKey) || acc[qualityKey]) return acc;
@@ -118,12 +136,12 @@ async function vidLinkScraper(ctx: ShowScrapeContext | MovieScrapeContext): Prom
   };
 }
 
-export const vidLinkProvider = makeSourcerer({
-  id: 'vidlink',
-  name: 'VidLink',
-  rank: 150,
-  disabled: false,
+export const nunflixScraper = makeSourcerer({
+  id: 'nunflix',
+  name: 'NFlix',
+  rank: 155,
+  disabled: !getUserToken(),
   flags: [flags.CORS_ALLOWED],
-  scrapeMovie: vidLinkScraper,
-  scrapeShow: vidLinkScraper,
+  scrapeMovie: comboScraper,
+  scrapeShow: comboScraper,
 });
