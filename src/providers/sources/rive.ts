@@ -3,7 +3,7 @@ import { SourcererEmbed, SourcererOutput, makeSourcerer } from '@/providers/base
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 import { NotFoundError } from '@/utils/errors';
 
-const baseUrl = 'https://rivestream.org';
+const baseUrl = 'rivestream.live';
 
 function generateSecretKey(id: number | string) {
   const keyArray = [
