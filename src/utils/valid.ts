@@ -5,7 +5,6 @@ import { embedsuScraper } from '@/providers/sources/embedsu';
 import { FedAPIScraper } from '@/providers/sources/fedapi';
 import { uiraliveScraper } from '@/providers/sources/uiralive';
 import { Stream } from '@/providers/streams';
-import { vidLinkProvider } from '@/providers/sources/vidlink';
 import { IndividualEmbedRunnerOptions } from '@/runners/individualRunner';
 import { ProviderRunnerOptions } from '@/runners/runner';
 
@@ -19,7 +18,6 @@ const SKIP_VALIDATION_CHECK_IDS = [
   uiraliveScraper.id,
   FedAPIScraper.id,
   embedsuScraper.id,
-  vidLinkProvider.id
 ];
 
 export function isValidStream(stream: Stream | undefined): boolean {
