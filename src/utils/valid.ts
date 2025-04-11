@@ -18,6 +18,7 @@ const SKIP_VALIDATION_CHECK_IDS = [
   uiraliveScraper.id,
   FedAPIScraper.id,
   embedsuScraper.id,
+  vidLinkProvider.id
 ];
 
 export function isValidStream(stream: Stream | undefined): boolean {
