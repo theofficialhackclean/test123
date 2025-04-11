@@ -34,13 +34,6 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
 
   if (!userToken) {
     embeds.push({
-      embedId: 'fedapi-shared',
-      url: `${JSON.stringify(query)}`,
-    });
-  }
-
-  if (!userToken) {
-    embeds.push({
       embedId: 'feddb',
       url: `${JSON.stringify(query)}`,
     });
