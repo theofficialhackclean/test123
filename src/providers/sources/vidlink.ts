@@ -57,7 +57,7 @@ async function vidLinkScraper(ctx: ShowScrapeContext | MovieScrapeContext): Prom
   if (ctx.media.type === 'movie') {
     apiUrl = `${vidlinkBase}/movie/${ctx.media.tmdbId}`;
   } else {
-    apiUrl = `${vidlinkBase}/tv/${ctx.media.tmdbId}?season=${ctx.media.season.number}&episode=${ctx.media.episode.number}`;
+  apiUrl = `${vidlinkBase}/tv/${ctx.media.tmdbId}/${ctx.media.season.number}/${ctx.media.episode.number}`;
   }
 
   try {
