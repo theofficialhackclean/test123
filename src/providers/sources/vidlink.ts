@@ -26,6 +26,13 @@ async function simulateBrowserVisit(ctx: ShowScrapeContext | MovieScrapeContext)
       'Accept-Language': 'en-US,en;q=0.9',
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
       'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120"',
+      'Sec-Ch-Ua-Mobile': '?0',
+      'Sec-Ch-Ua-Platform': '"Windows"',
+      'Sec-Fetch-Dest': 'document',
+      'Sec-Fetch-Mode': 'navigate',
+      'Sec-Fetch-Site': 'none',
+      'Sec-Fetch-User': '?1',
+      'Upgrade-Insecure-Requests': '1'
     }
   });
 
@@ -43,6 +50,11 @@ async function simulateBrowserVisit(ctx: ShowScrapeContext | MovieScrapeContext)
     'Sec-Fetch-Site': 'same-origin',
     'Accept': 'application/json',
     'Accept-Encoding': 'gzip, deflate, br',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Origin': vidlinkBase,
+    'Connection': 'keep-alive',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache'
   };
 }
 
@@ -64,7 +76,12 @@ async function vidLinkScraper(ctx: ShowScrapeContext | MovieScrapeContext): Prom
     // Make the API request with proper browser-like headers
     const apiRes = await ctx.proxiedFetcher<VidLinkResponse>(apiUrl, {
       headers,
-      method: 'GET'
+      method: 'GET',
+      // Add proxy rotation if available
+      proxy: {
+        rotate: true,
+        residential: true
+      }
     });
 
     if (!apiRes?.success) {
@@ -83,7 +100,14 @@ async function vidLinkScraper(ctx: ShowScrapeContext | MovieScrapeContext): Prom
         qualities: Object.fromEntries(
           apiRes.streams.map((stream, i) => [
             `quality_${i}`,
-            { type: 'mp4', url: stream.file }
+            { 
+              type: stream.type || 'mp4', 
+              url: stream.file,
+              headers: {
+                'Referer': vidlinkBase,
+                'Origin': vidlinkBase
+              }
+            }
           ])
         ),
         captions: [],
@@ -92,8 +116,26 @@ async function vidLinkScraper(ctx: ShowScrapeContext | MovieScrapeContext): Prom
     };
   } catch (error) {
     if (error instanceof Error) {
-      if (error.message.includes('blocked') || error.message.includes('security')) {
-        throw new Error('VidLink blocked the request. Try using residential proxies or rotating IPs.');
+      if (error.message.includes('blocked') || error.message.includes('security') || error.message.includes('CORS')) {
+        // Try with different approach if CORS is blocking
+        try {
+          const embedUrl = `${vidlinkBase}/embed/${ctx.media.type === 'movie' ? 'movie' : 'tv'}/${ctx.media.tmdbId}`;
+          const embedRes = await ctx.proxiedFetcher(embedUrl, {
+            headers: {
+              ...headers,
+              'Accept': 'text/html',
+              'Sec-Fetch-Dest': 'iframe',
+              'Sec-Fetch-Mode': 'navigate',
+              'Sec-Fetch-Site': 'same-origin'
+            }
+          });
+          
+          // Parse the embed page for stream URLs
+          // This would need actual implementation based on VidLink's embed page structure
+          throw new Error('Embed page parsing not implemented. Please check VidLink embed page structure.');
+        } catch (embedError) {
+          throw new Error('VidLink blocked the request. Try using residential proxies or rotating IPs.');
+        }
       }
     }
     throw error;
