@@ -158,7 +158,6 @@ export function gatherAllEmbeds(): Array<Embed> {
     webtor480Scraper,
     viperScraper,
     FedAPIPrivateScraper,
-    FedAPISharedScraper,
     FedDBScraper,
     riveAsiacloudScraper,
      riveEe3Scraper,
