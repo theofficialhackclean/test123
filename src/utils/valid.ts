@@ -5,6 +5,7 @@ import { embedsuScraper } from '@/providers/sources/embedsu';
 import { FedAPIScraper } from '@/providers/sources/fedapi';
 import { uiraliveScraper } from '@/providers/sources/uiralive';
 import { Stream } from '@/providers/streams';
+import { vidLinkProvider } from './sources/vidlink';
 import { IndividualEmbedRunnerOptions } from '@/runners/individualRunner';
 import { ProviderRunnerOptions } from '@/runners/runner';
 
