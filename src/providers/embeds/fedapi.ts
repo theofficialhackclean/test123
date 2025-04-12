@@ -6,7 +6,7 @@ import { NotFoundError } from '@/utils/errors';
 import { Caption } from '../captions';
 
 // Thanks Nemo for this API!
-const BASE_URL = 'https://fed-api.pstream.org';
+const BASE_URL = 'febox.vercel.app/api';
 const CACHE_URL = 'https://fed-api.pstream.org/cache';
 
 // Language mapping for subtitles
