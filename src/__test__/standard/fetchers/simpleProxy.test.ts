@@ -1,6 +1,7 @@
 import { makeSimpleProxyFetcher } from '@/fetchers/simpleProxy';
 import { DefaultedFetcherOptions, FetcherOptions } from '@/fetchers/types';
 import { Headers } from 'node-fetch';
+import { AbortController } from 'abort-controller';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 describe('makeSimpleProxyFetcher()', () => {
@@ -50,6 +51,8 @@ describe('makeSimpleProxyFetcher()', () => {
     );
     expect((async () => (await prom).statusCode)()).resolves.toEqual(204);
     expect((async () => (await prom).finalUrl)()).resolves.toEqual('test123');
+    const controller = new AbortController();
+    ops.output.signal = controller.signal;
     expect(fetch).toBeCalledWith(ops.outputUrl ?? ops.inputUrl, ops.output);
     vi.clearAllMocks();
   }
@@ -72,6 +75,7 @@ describe('makeSimpleProxyFetcher()', () => {
         headers: {
           'X-Hello': 'world',
         },
+        signal: new AbortController().signal,
       },
       outputBody: 'hello world',
     });
@@ -90,6 +94,7 @@ describe('makeSimpleProxyFetcher()', () => {
       output: {
         method: 'GET',
         headers: {},
+        signal: new AbortController().signal,
       },
       outputBody: 'hello world',
     });
@@ -106,6 +111,7 @@ describe('makeSimpleProxyFetcher()', () => {
       output: {
         method: 'GET',
         headers: {},
+        signal: new AbortController().signal,
       },
       outputBody: 'hello world',
     });
@@ -125,6 +131,7 @@ describe('makeSimpleProxyFetcher()', () => {
       output: {
         method: 'POST',
         headers: {},
+        signal: new AbortController().signal,
       },
       outputBody: 'hello world',
     });
@@ -141,6 +148,7 @@ describe('makeSimpleProxyFetcher()', () => {
       output: {
         method: 'POST',
         headers: {},
+        signal: new AbortController().signal,
       },
       outputBody: { hello: 42 },
     });

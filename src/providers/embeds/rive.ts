@@ -3,47 +3,50 @@ import { makeEmbed } from '@/providers/base';
 
 const providers = [
   {
-    id: 'rive-hydrax',
+    id: 'rive-guru',
     rank: 270,
+    name: 'Guru (onionflixr/FlixHQ)',
   },
   {
-    id: 'rive-fastx',
+    id: 'rive-ghost',
     rank: 269,
   },
   {
-    id: 'rive-filmecho',
+    id: 'rive-putafilme',
     rank: 268,
+    name: 'Putafilme - Multi',
   },
   {
     id: 'rive-nova',
     rank: 267,
   },
   {
-    id: 'rive-guru',
+    id: 'rive-asiacloud',
     rank: 266,
   },
   {
-    id: 'rive-g1',
+    id: 'rive-hydrax',
     rank: 265,
   },
   {
-    id: 'rive-g2',
+    id: 'rive-filmecho',
     rank: 264,
+    name: 'NfMirror',
   },
   {
-    id: 'rive-ee3',
+    id: 'rive-fastx',
     rank: 263,
   },
   {
-    id: 'rive-ghost',
+    id: 'rive-g1',
     rank: 262,
   },
   {
-    id: 'rive-putafilme',
+    id: 'rive-g2',
     rank: 261,
   },
   {
-    id: 'rive-asiacloud',
+    id: 'rive-ee3',
     rank: 260,
   },
   {
@@ -52,13 +55,15 @@ const providers = [
   },
 ];
 
-function embed(provider: { id: string; rank: number; disabled?: boolean }) {
+function embed(provider: { id: string; rank: number; name?: string; disabled?: boolean }) {
   return makeEmbed({
     id: provider.id,
-    name: provider.id
-      .split('-')
-      .map((word) => word[0].toUpperCase() + word.slice(1))
-      .join(' '),
+    name:
+      provider.name ||
+      provider.id
+        .split('-')
+        .map((word) => word[0].toUpperCase() + word.slice(1))
+        .join(' '),
     disabled: provider.disabled,
     rank: provider.rank,
     async scrape(ctx) {

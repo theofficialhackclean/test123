@@ -9,6 +9,7 @@ import { NotFoundError } from '@/utils/errors';
 import { addOpenSubtitlesCaptions } from '@/utils/opensubtitles';
 import { requiresProxy, setupProxy } from '@/utils/proxy';
 import { isValidStream, validatePlayableStreams } from '@/utils/valid';
+import { addWyzieCaptions } from '@/utils/wyziesubs';
 
 export type IndividualSourceRunnerOptions = {
   features: FeatureMap;
@@ -92,18 +93,33 @@ export async function scrapeInvidualSource(
     if (playableStreams.length === 0) throw new NotFoundError('No playable streams found');
 
     // opensubtitles
-    if (!ops.disableOpensubtitles)
+    if (!ops.disableOpensubtitles) {
       for (const playableStream of playableStreams) {
-        playableStream.captions = await addOpenSubtitlesCaptions(
-          playableStream.captions,
-          ops,
-          btoa(
-            `${ops.media.imdbId}${
-              ops.media.type === 'show' ? `.${ops.media.season.number}.${ops.media.episode.number}` : ''
-            }`,
-          ),
-        );
+        // Try Wyzie subs first
+        if (ops.media.imdbId) {
+          playableStream.captions = await addWyzieCaptions(
+            playableStream.captions,
+            ops.media.tmdbId,
+            ops.media.imdbId,
+            ops.media.type === 'show' ? ops.media.season.number : undefined,
+            ops.media.type === 'show' ? ops.media.episode.number : undefined,
+          );
+
+          // Fall back to OpenSubtitles if no Wyzie subs found
+          if (!playableStream.captions.some((caption) => caption.wyziesubs)) {
+            playableStream.captions = await addOpenSubtitlesCaptions(
+              playableStream.captions,
+              ops,
+              btoa(
+                `${ops.media.imdbId}${
+                  ops.media.type === 'show' ? `.${ops.media.season.number}.${ops.media.episode.number}` : ''
+                }`,
+              ),
+            );
+          }
+        }
       }
+    }
     output.stream = playableStreams;
   }
   return output;

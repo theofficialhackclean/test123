@@ -8,6 +8,7 @@ export type FetchOps = {
   method: string;
   body: any;
   credentials?: 'include' | 'same-origin' | 'omit';
+  signal?: any;
 };
 
 export type FetchHeaders = {

@@ -3,6 +3,49 @@ import { SourcererEmbed, SourcererOutput, makeSourcerer } from '@/providers/base
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 import { NotFoundError } from '@/utils/errors';
 
+// REQUIRES A PROXY FOR MOST SERVERS set it up here https://github.com/Pasithea0/M3U8-Proxy
+function createProxyUrl(originalUrl: string, referer: string): string {
+  const encodedUrl = encodeURIComponent(originalUrl);
+  const encodedHeaders = encodeURIComponent(
+    JSON.stringify({
+      referer,
+    }),
+  );
+
+  return `https://proxy.fifthwit.net/m3u8-proxy?url=${encodedUrl}&headers=${encodedHeaders}`;
+}
+
+function processProxiedURL(url: string): string {
+  // Handle orbitproxy URLs
+  if (url.includes('orbitproxy')) {
+    try {
+      const urlParts = url.split(/orbitproxy\.[^/]+\//);
+      if (urlParts.length >= 2) {
+        const encryptedPart = urlParts[1].split('.m3u8')[0];
+        try {
+          const decodedData = Buffer.from(encryptedPart, 'base64').toString('utf-8');
+          const jsonData = JSON.parse(decodedData);
+          const originalUrl = jsonData.u;
+          const referer = jsonData.r || '';
+
+          return createProxyUrl(originalUrl, referer);
+        } catch (jsonError) {
+          console.error('Error decoding/parsing orbitproxy data:', jsonError);
+        }
+      }
+    } catch (error) {
+      console.error('Error processing orbitproxy URL:', error);
+    }
+  }
+
+  // Handle other proxied URLs
+  if (url.includes('/m3u8-proxy?url=')) {
+    return url.replace(/https:\/\/[^/]+\/m3u8-proxy/, 'https://proxy.fifthwit.net/m3u8-proxy');
+  }
+
+  return url;
+}
+
 const getHost = () => {
   const urlObj = new URL(window.location.href);
   return `${urlObj.protocol}//${urlObj.host}`;
@@ -43,57 +86,10 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
 
   if (!servers.length) throw new NotFoundError('No server playlist found');
 
-  // Process orbitproxy.ru URLs so we can proxy yourself
-  // REQUIRES A PROXY FOR MOST SERVERS set it up here https://github.com/Pasithea0/M3U8-Proxy
-  const processedServers = await Promise.all(
-    servers.map(async (server) => {
-      if (server.url.includes('orbitproxy')) {
-        try {
-          const urlParts = server.url.split(/orbitproxy\.[^/]+\//);
-          if (urlParts.length >= 2) {
-            const encryptedPart = urlParts[1].split('.m3u8')[0];
-
-            try {
-              const decodedData = Buffer.from(encryptedPart, 'base64').toString('utf-8');
-              // eslint-disable-next-line no-console
-              console.log('Decoded data:', decodedData);
-
-              const jsonData = JSON.parse(decodedData);
-
-              const originalUrl = jsonData.u;
-              // const origin = jsonData.o || '';
-              const referer = jsonData.r || '';
-
-              const encodedUrl = encodeURIComponent(originalUrl);
-              const encodedHeaders = encodeURIComponent(
-                JSON.stringify({
-                  // origin,
-                  referer,
-                }),
-              );
-
-              const proxyUrl = `https://m3u8.wafflehacker.io/m3u8-proxy?url=${encodedUrl}&headers=${encodedHeaders}`; // bring your own
-              // eslint-disable-next-line no-console
-              console.log('Created proxy URL:', proxyUrl);
-
-              return {
-                ...server,
-                url: proxyUrl,
-              };
-            } catch (jsonError) {
-              // eslint-disable-next-line no-console
-              console.error('Error decoding/parsing orbitproxy data:', jsonError);
-              return server;
-            }
-          }
-        } catch (error) {
-          // eslint-disable-next-line no-console
-          console.error('Error processing orbitproxy URL:', error);
-        }
-      }
-      return server;
-    }),
-  );
+  const processedServers = servers.map((server) => ({
+    ...server,
+    url: processProxiedURL(server.url),
+  }));
 
   const embeds: SourcererEmbed[] = processedServers.map((server) => ({
     embedId: `server-${server.serverNumber}`,
@@ -109,6 +105,7 @@ export const vidsrcsuScraper = makeSourcerer({
   id: 'vidsrcsu',
   name: 'vidsrc.su',
   rank: 150,
+  disabled: true,
   flags: [flags.CORS_ALLOWED],
   scrapeMovie: comboScraper,
   scrapeShow: comboScraper,

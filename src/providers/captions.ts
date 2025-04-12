@@ -10,6 +10,7 @@ export type Caption = {
   type: CaptionType;
   id: string; // only unique per stream
   opensubtitles?: boolean;
+  wyziesubs?: boolean;
   url: string;
   hasCorsRestrictions: boolean;
   language: string;

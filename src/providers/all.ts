@@ -1,19 +1,6 @@
 import { Embed, Sourcerer } from '@/providers/base';
 import { doodScraper } from '@/providers/embeds/dood';
 import { mixdropScraper } from '@/providers/embeds/mixdrop';
-import { turbovidScraper } from '@/providers/embeds/turbovid';
-import { upcloudScraper } from '@/providers/embeds/upcloud';
-import { autoembedScraper } from '@/providers/sources/autoembed';
-import { catflixScraper } from '@/providers/sources/catflix';
-import { ee3Scraper } from '@/providers/sources/ee3';
-import { fsharetvScraper } from '@/providers/sources/fsharetv';
-import { insertunitScraper } from '@/providers/sources/insertunit';
-import { mp4hydraScraper } from '@/providers/sources/mp4hydra';
-import { tugaflixScraper } from '@/providers/sources/tugaflix';
-import { riveScraper } from '@/providers/sources/rive';
-import { vidsrcsuScraper } from '@/providers/sources/vidsrcsu';
-import { vidsrcembedScraper } from '@/providers/embeds/vidsrc';
-import { vidsrcScraper } from '@/providers/sources/vidsrc/index';
 import {
   riveAsiacloudScraper,
   riveEe3Scraper,
@@ -28,6 +15,18 @@ import {
   riveNovaScraper,
   rivePutafilmeScraper,
 } from '@/providers/embeds/rive';
+import { turbovidScraper } from '@/providers/embeds/turbovid';
+import { upcloudScraper } from '@/providers/embeds/upcloud';
+import { autoembedScraper } from '@/providers/sources/autoembed';
+import { catflixScraper } from '@/providers/sources/catflix';
+import { ee3Scraper } from '@/providers/sources/ee3';
+import { fsharetvScraper } from '@/providers/sources/fsharetv';
+import { insertunitScraper } from '@/providers/sources/insertunit';
+import { mp4hydraScraper } from '@/providers/sources/mp4hydra';
+import { riveScraper } from '@/providers/sources/rive';
+import { tugaflixScraper } from '@/providers/sources/tugaflix';
+import { vidsrcsuScraper } from '@/providers/sources/vidsrcsu';
+
 import {
   autoembedBengaliScraper,
   autoembedEnglishScraper,
@@ -62,6 +61,8 @@ import { warezcdnembedHlsScraper } from './embeds/warezcdn/hls';
 import { warezcdnembedMp4Scraper } from './embeds/warezcdn/mp4';
 import { warezPlayerScraper } from './embeds/warezcdn/warezplayer';
 import { webtor1080Scraper, webtor480Scraper, webtor4kScraper, webtor720Scraper } from './embeds/webtor';
+import { xprimeApolloEmbed, xprimeFoxEmbed } from './embeds/xprime';
+import { EightStreamScraper } from './sources/8stream';
 import { coitusScraper } from './sources/coitus';
 import { embedsuScraper } from './sources/embedsu';
 import { FedAPIScraper } from './sources/fedapi';
@@ -77,12 +78,7 @@ import { uiraliveScraper } from './sources/uiralive';
 import { vidapiClickScraper } from './sources/vidapiclick';
 import { warezcdnScraper } from './sources/warezcdn';
 import { webtorScraper } from './sources/webtor';
-import { vidLinkProvider } from './sources/vidlink';
-import { 
-  vidlinkServer1Scraper, 
-  vidlinkServer2Scraper, 
-  vidlink4kScraper 
-} from './embeds/vidlink';
+import { xprimeScraper } from './sources/xprime';
 
 export function gatherAllSources(): Array<Sourcerer> {
   // all sources are gathered here
@@ -98,7 +94,6 @@ export function gatherAllSources(): Array<Sourcerer> {
     ee3Scraper,
     fsharetvScraper,
     vidsrcsuScraper,
-    vidsrcScraper,
     mp4hydraScraper,
     webtorScraper,
     embedsuScraper,
@@ -112,7 +107,8 @@ export function gatherAllSources(): Array<Sourcerer> {
     streamboxScraper,
     nunflixScraper,
     riveScraper,
-    vidLinkProvider,
+    EightStreamScraper,
+    xprimeScraper,
   ];
 }
 
@@ -123,7 +119,6 @@ export function gatherAllEmbeds(): Array<Embed> {
     vidCloudScraper,
     mixdropScraper,
     ridooScraper,
-    vidsrcembedScraper,
     closeLoadScraper,
     doodScraper,
     streamvidScraper,
@@ -160,19 +155,18 @@ export function gatherAllEmbeds(): Array<Embed> {
     FedAPIPrivateScraper,
     FedDBScraper,
     riveAsiacloudScraper,
-     riveEe3Scraper,
-     riveFastxScraper,
-     riveFilmechoScraper,
-     riveG1Scraper,
-     riveG2Scraper,
-     riveGhostScraper,
-     riveGuruScraper,
-     riveHydraxScraper,
-     riveKageScraper,
-     riveNovaScraper,
-     rivePutafilmeScraper,
-     vidlinkServer1Scraper,
-     vidlinkServer2Scraper,
-     vidlink4kScraper,
+    riveEe3Scraper,
+    riveFastxScraper,
+    riveFilmechoScraper,
+    riveG1Scraper,
+    riveG2Scraper,
+    riveGhostScraper,
+    riveGuruScraper,
+    riveHydraxScraper,
+    riveKageScraper,
+    riveNovaScraper,
+    rivePutafilmeScraper,
+    xprimeFoxEmbed,
+    xprimeApolloEmbed,
   ];
 }

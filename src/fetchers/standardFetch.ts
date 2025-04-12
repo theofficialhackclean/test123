@@ -1,3 +1,5 @@
+import AbortController from 'abort-controller';
+
 import { serializeBody } from '@/fetchers/body';
 import { makeFullUrl } from '@/fetchers/common';
 import { FetchLike, FetchReply } from '@/fetchers/fetch';
@@ -21,27 +23,42 @@ export function makeStandardFetcher(f: FetchLike): Fetcher {
     const fullUrl = makeFullUrl(url, ops);
     const seralizedBody = serializeBody(ops.body);
 
-    const res = await f(fullUrl, {
-      method: ops.method,
-      headers: {
-        ...seralizedBody.headers,
-        ...ops.headers,
-      },
-      body: seralizedBody.body,
-      credentials: ops.credentials,
-    });
+    // AbortController
+    const controller = new AbortController();
+    const timeout = 10000; // 10s timeout
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-    let body: any;
-    const isJson = res.headers.get('content-type')?.includes('application/json');
-    if (isJson) body = await res.json();
-    else body = await res.text();
+    try {
+      const res = await f(fullUrl, {
+        method: ops.method,
+        headers: {
+          ...seralizedBody.headers,
+          ...ops.headers,
+        },
+        body: seralizedBody.body,
+        credentials: ops.credentials,
+        signal: controller.signal, // Pass the signal to fetch
+      });
 
-    return {
-      body,
-      finalUrl: res.extraUrl ?? res.url,
-      headers: getHeaders(ops.readHeaders, res),
-      statusCode: res.status,
-    };
+      clearTimeout(timeoutId);
+
+      let body: any;
+      const isJson = res.headers.get('content-type')?.includes('application/json');
+      if (isJson) body = await res.json();
+      else body = await res.text();
+
+      return {
+        body,
+        finalUrl: res.extraUrl ?? res.url,
+        headers: getHeaders(ops.readHeaders, res),
+        statusCode: res.status,
+      };
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        throw new Error(`Fetch request to ${fullUrl} timed out after ${timeout}ms`);
+      }
+      throw error;
+    }
   };
 
   return normalFetch;

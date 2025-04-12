@@ -3,7 +3,7 @@ import { SourcererEmbed, SourcererOutput, makeSourcerer } from '@/providers/base
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 import { NotFoundError } from '@/utils/errors';
 
-const baseUrl = 'rivestream.live';
+const baseUrl = 'https://rivestream.org';
 
 function generateSecretKey(id: number | string) {
   const keyArray = [
@@ -76,7 +76,19 @@ function generateSecretKey(id: number | string) {
   return keyArray[index];
 }
 
+function createProxyUrl(originalUrl: string, referer: string): string {
+  const encodedUrl = encodeURIComponent(originalUrl);
+  const encodedHeaders = encodeURIComponent(
+    JSON.stringify({
+      referer,
+    }),
+  );
+
+  return `https://proxy.fifthwit.net/m3u8-proxy?url=${encodedUrl}&headers=${encodedHeaders}`;
+}
+
 function processProxiedURL(url: string): string {
+  // Handle orbitproxy URLs
   if (url.includes('orbitproxy')) {
     try {
       const urlParts = url.split(/orbitproxy\.[^/]+\//);
@@ -84,20 +96,11 @@ function processProxiedURL(url: string): string {
         const encryptedPart = urlParts[1].split('.m3u8')[0];
         try {
           const decodedData = Buffer.from(encryptedPart, 'base64').toString('utf-8');
-
           const jsonData = JSON.parse(decodedData);
           const originalUrl = jsonData.u;
           const referer = jsonData.r || '';
 
-          const encodedUrl = encodeURIComponent(originalUrl);
-          const encodedHeaders = encodeURIComponent(
-            JSON.stringify({
-              referer,
-            }),
-          );
-
-          const proxyUrl = `https://m3u8.wafflehacker.io/m3u8-proxy?url=${encodedUrl}&headers=${encodedHeaders}`;
-          return proxyUrl;
+          return createProxyUrl(originalUrl, referer);
         } catch (jsonError) {
           console.error('Error decoding/parsing orbitproxy data:', jsonError);
         }
@@ -106,6 +109,12 @@ function processProxiedURL(url: string): string {
       console.error('Error processing orbitproxy URL:', error);
     }
   }
+
+  // Handle other proxied URLs
+  if (url.includes('/m3u8-proxy?url=')) {
+    return url.replace(/https:\/\/[^/]+\/m3u8-proxy/, 'https://proxy.fifthwit.net/m3u8-proxy');
+  }
+
   return url;
 }
 
@@ -189,7 +198,8 @@ async function comboScraper(ctx: MovieScrapeContext | ShowScrapeContext): Promis
 export const riveScraper = makeSourcerer({
   id: 'rive',
   name: 'Rive',
-  rank: 130,
+  rank: 60,
+  disabled: true,
   flags: [flags.CORS_ALLOWED],
   scrapeMovie: comboScraper,
   scrapeShow: comboScraper,

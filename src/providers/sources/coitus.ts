@@ -37,7 +37,7 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
             }),
           );
 
-          processedUrl = `https://m3u8.wafflehacker.io/m3u8-proxy?url=${encodedUrl}&headers=${encodedHeaders}`;
+          processedUrl = `https://proxy.fifthwit.net/m3u8-proxy?url=${encodedUrl}&headers=${encodedHeaders}`;
         } catch (jsonError) {
           console.error('Error decoding/parsing orbitproxy data:', jsonError);
         }
@@ -69,7 +69,7 @@ export const coitusScraper = makeSourcerer({
   id: 'coitus',
   name: 'Autoembed+',
   rank: 91,
-  disabled: false,
+  disabled: true,
   flags: [flags.CORS_ALLOWED],
   scrapeMovie: comboScraper,
   scrapeShow: comboScraper,

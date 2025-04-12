@@ -1,3 +1,5 @@
+import AbortController from 'abort-controller';
+
 import { makeFullUrl } from '@/fetchers/common';
 import { FetchLike } from '@/fetchers/fetch';
 import { makeStandardFetcher } from '@/fetchers/standardFetch';
@@ -18,19 +20,39 @@ const responseHeaderMap: Record<string, string> = {
 export function makeSimpleProxyFetcher(proxyUrl: string, f: FetchLike): Fetcher {
   const proxiedFetch: Fetcher = async (url, ops) => {
     const fetcher = makeStandardFetcher(async (a, b) => {
-      const res = await f(a, b);
+      // AbortController
+      const controller = new AbortController();
+      const timeout = 10000; // 10s timeout
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-      // set extra headers that cant normally be accessed
-      res.extraHeaders = new Headers();
-      Object.entries(responseHeaderMap).forEach((entry) => {
-        const value = res.headers.get(entry[0]);
-        if (!value) return;
-        res.extraHeaders?.set(entry[1].toLowerCase(), value);
-      });
+      try {
+        const res = await f(a, {
+          method: b?.method || 'GET',
+          headers: b?.headers || {},
+          body: b?.body,
+          credentials: b?.credentials,
+          signal: controller.signal, // Pass the signal to fetch
+        });
 
-      // set correct final url
-      res.extraUrl = res.headers.get('X-Final-Destination') ?? res.url;
-      return res;
+        clearTimeout(timeoutId);
+
+        // set extra headers that cant normally be accessed
+        res.extraHeaders = new Headers();
+        Object.entries(responseHeaderMap).forEach((entry) => {
+          const value = res.headers.get(entry[0]);
+          if (!value) return;
+          res.extraHeaders?.set(entry[1].toLowerCase(), value);
+        });
+
+        // set correct final url
+        res.extraUrl = res.headers.get('X-Final-Destination') ?? res.url;
+        return res;
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          throw new Error(`Fetch request to ${a} timed out after ${timeout}ms`);
+        }
+        throw error;
+      }
     });
 
     const fullUrl = makeFullUrl(url, ops);
