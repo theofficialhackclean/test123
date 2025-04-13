@@ -84,11 +84,11 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
     ctx.progress(50);
 
     // Process streams with better quality handling
-    const streams = Object.entries(data.streams).reduce((acc, [quality, url]) => {
+      const streams = Object.entries(data.streams).reduce((acc, [quality, url]) => {
       if (!url || quality === 'ORG') return acc; // Skip empty or original quality
-
+    
       const qualityKey = quality === '4K' ? 2160 : parseInt(quality.replace('P', ''), 10);
-      if (!Number.isNaN(qualityKey) {
+      if (!Number.isNaN(qualityKey)) {
         acc[qualityKey] = url;
       }
       return acc;
