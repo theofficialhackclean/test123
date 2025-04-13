@@ -75,8 +75,6 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
   try {
     const data = await ctx.fetcher<StreamData>(apiUrl, {
       headers: getRequestHeaders(),
-      timeout: 15000,
-      retry: 2,
     });
 
     if (data?.error || !data?.streams) {
