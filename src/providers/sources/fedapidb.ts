@@ -3,51 +3,68 @@ import { flags } from '@/entrypoint/utils/targets';
 import { SourcererOutput, makeSourcerer } from '@/providers/base';
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 import { NotFoundError } from '@/utils/errors';
-
 import { Caption } from '../captions';
 
-// Thanks Nemo for this API!
 const BASE_URL = 'https://fed-api.pstream.org/cache';
 
-// this is so fucking useless
-const languageMap: Record<string, string> = {
-  English: 'en',
-  Spanish: 'es',
-  French: 'fr',
-  German: 'de',
-  Italian: 'it',
-  Portuguese: 'pt',
-  Arabic: 'ar',
-  Russian: 'ru',
-  Japanese: 'ja',
-  Korean: 'ko',
-  Chinese: 'zh',
-  Hindi: 'hi',
-  Turkish: 'tr',
-  Dutch: 'nl',
-  Polish: 'pl',
-  Swedish: 'sv',
-  Indonesian: 'id',
-  Thai: 'th',
-  Vietnamese: 'vi',
-};
-
-const getUserToken = (): string | null => {
-  try {
-    return typeof window !== 'undefined' ? window.localStorage.getItem('febbox_ui_token') : null;
-  } catch (e) {
-    console.warn('Unable to access localStorage:', e);
-    return null;
-  }
+// Enhanced language map with case-insensitive matching and common variations
+const LANGUAGE_MAP: Record<string, string> = {
+  english: 'en',
+  spanish: 'es',
+  french: 'fr',
+  german: 'de',
+  italian: 'it',
+  portuguese: 'pt',
+  arabic: 'ar',
+  russian: 'ru',
+  japanese: 'ja',
+  korean: 'ko',
+  chinese: 'zh',
+  hindi: 'hi',
+  turkish: 'tr',
+  dutch: 'nl',
+  polish: 'pl',
+  swedish: 'sv',
+  indonesian: 'id',
+  thai: 'th',
+  vietnamese: 'vi',
+  // Common variations
+  'zh-cn': 'zh',
+  'zh-tw': 'zh',
+  'pt-br': 'pt',
 };
 
 interface StreamData {
   streams: Record<string, string>;
-  subtitles: Record<string, any>;
+  subtitles: Record<string, { subtitle_link: string; subtitle_name?: string }>;
   error?: string;
   name?: string;
   size?: string;
 }
+
+const getNormalizedLanguageCode = (languageName: string): string => {
+  const normalized = languageName.toLowerCase().replace(/[^a-z]/g, ''); // Remove special chars
+  return LANGUAGE_MAP[normalized] ?? 'unknown';
+};
+
+const getRandomUserAgent = (): string => {
+  const agents = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/120.0',
+  ];
+  return agents[Math.floor(Math.random() * agents.length)];
+};
+
+const getRequestHeaders = (): Record<string, string> => ({
+  'User-Agent': getRandomUserAgent(),
+  'Accept': 'application/json',
+  'Accept-Language': 'en-US,en;q=0.5',
+  'Referer': 'https://pstream.org/',
+  'Origin': 'https://pstream.org',
+  'DNT': '1',
+  'Connection': 'keep-alive',
+});
 
 async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
   const apiUrl =
@@ -55,103 +72,79 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
       ? `${BASE_URL}/${ctx.media.imdbId}`
       : `${BASE_URL}/${ctx.media.imdbId}/${ctx.media.season.number}/${ctx.media.episode.number}`;
 
-  const data = await ctx.fetcher<StreamData>(apiUrl);
+  try {
+    const data = await ctx.fetcher<StreamData>(apiUrl, {
+      headers: getRequestHeaders(),
+      timeout: 15000,
+      retry: 2,
+    });
 
-  if (data?.error) {
-    throw new NotFoundError('No stream found');
-  }
-  if (!data) throw new NotFoundError('No response from API');
-  ctx.progress(50);
-
-  const streams = Object.entries(data.streams).reduce((acc: Record<string, string>, [quality, url]) => {
-    let qualityKey: number;
-    if (quality === '4K') {
-      qualityKey = 2160;
-    } else if (quality === 'ORG') {
-      return acc;
-    } else {
-      qualityKey = parseInt(quality.replace('P', ''), 10);
+    if (data?.error || !data?.streams) {
+      throw new NotFoundError(data?.error || 'No streams available');
     }
-    if (Number.isNaN(qualityKey) || acc[qualityKey]) return acc;
-    acc[qualityKey] = url;
-    return acc;
-  }, {});
 
-  const captions: Caption[] = [];
-  if (data.subtitles) {
-    for (const [langKey, subtitleData] of Object.entries(data.subtitles)) {
-      // Extract language name from key
-      const languageKeyPart = langKey.split('_')[0];
-      const languageName = languageKeyPart.charAt(0).toUpperCase() + languageKeyPart.slice(1);
-      const languageCode = languageMap[languageName]?.toLowerCase() ?? 'unknown';
+    ctx.progress(50);
 
-      // Check if the subtitle data is in the new format (has subtitle_link)
-      if (subtitleData.subtitle_link) {
-        const url = subtitleData.subtitle_link;
-        const isVtt = url.toLowerCase().endsWith('.vtt');
+    // Process streams with better quality handling
+    const streams = Object.entries(data.streams).reduce((acc, [quality, url]) => {
+      if (!url || quality === 'ORG') return acc; // Skip empty or original quality
+
+      const qualityKey = quality === '4K' ? 2160 : parseInt(quality.replace('P', ''), 10);
+      if (!Number.isNaN(qualityKey) {
+        acc[qualityKey] = url;
+      }
+      return acc;
+    }, {} as Record<number, string>);
+
+    // Process subtitles with better language detection
+    const captions: Caption[] = [];
+    if (data.subtitles) {
+      for (const [langKey, subtitleData] of Object.entries(data.subtitles)) {
+        if (!subtitleData?.subtitle_link) continue;
+
+        const languageName = langKey.split('_')[0];
+        const languageCode = getNormalizedLanguageCode(languageName);
+        const isVtt = subtitleData.subtitle_link.toLowerCase().endsWith('.vtt');
+
         captions.push({
           type: isVtt ? 'vtt' : 'srt',
-          id: url,
-          url,
+          id: subtitleData.subtitle_link,
+          url: subtitleData.subtitle_link,
           language: languageCode,
           hasCorsRestrictions: false,
         });
       }
     }
-  }
 
-  ctx.progress(90);
+    ctx.progress(90);
 
-  return {
-    embeds: [],
-    stream: [
-      {
-        id: 'primary',
-        captions,
-        qualities: {
-          ...(streams[2160] && {
-            '4k': {
-              type: 'mp4',
-              url: streams[2160],
-            },
-          }),
-          ...(streams[1080] && {
-            1080: {
-              type: 'mp4',
-              url: streams[1080],
-            },
-          }),
-          ...(streams[720] && {
-            720: {
-              type: 'mp4',
-              url: streams[720],
-            },
-          }),
-          ...(streams[480] && {
-            480: {
-              type: 'mp4',
-              url: streams[480],
-            },
-          }),
-          ...(streams[360] && {
-            360: {
-              type: 'mp4',
-              url: streams[360],
-            },
-          }),
+    return {
+      embeds: [],
+      stream: [
+        {
+          id: 'primary',
+          captions,
+          qualities: Object.entries(streams).reduce((acc, [quality, url]) => {
+            const qualityName = quality === '2160' ? '4k' : quality;
+            acc[qualityName] = { type: 'mp4', url };
+            return acc;
+          }, {} as Record<string, { type: string; url: string }>),
+          type: 'file',
+          flags: [flags.CORS_ALLOWED],
         },
-        type: 'file',
-        flags: [flags.CORS_ALLOWED],
-      },
-    ],
-  };
+      ],
+    };
+  } catch (error) {
+    console.error('FED DB API request failed:', error);
+    throw new NotFoundError('Failed to fetch from FED DB API');
+  }
 }
 
 export const FedAPIDBScraper = makeSourcerer({
   id: 'fedapidb',
   name: 'FED DB (Beta)',
   rank: 259,
-  disabled: !!getUserToken(),
+  disabled: false, // Always enabled to allow token injection if available
   flags: [flags.CORS_ALLOWED],
   scrapeMovie: comboScraper,
   scrapeShow: comboScraper,
