@@ -5,7 +5,7 @@ import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 import { NotFoundError } from '@/utils/errors';
 import { Caption } from '../captions';
 
-const BASE_URL = 'https://fed-api.pstream.org';
+const BASE_URL = 'https://feb-hackflixapi.vercel.app/api/febbox';
 
 // Enhanced language map with case-insensitive matching
 const LANGUAGE_MAP: Record<string, string> = {
