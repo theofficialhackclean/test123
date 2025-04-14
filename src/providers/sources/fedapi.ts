@@ -7,7 +7,7 @@ import { NotFoundError } from '@/utils/errors';
 import { Caption } from '../captions';
 
 
-const BASE_URL = 'https://hackflixapi.vercel.app/api/febbox';
+const BASE_URL = 'https://hackflixapi.vercel.app/api';
 
 // this is so fucking useless
 const languageMap: Record<string, string> = {
