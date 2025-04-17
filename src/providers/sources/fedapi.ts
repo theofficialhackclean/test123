@@ -43,7 +43,7 @@ const getUserToken = (): string | null => {
 
 // Extract media type and title from the URL
 const parseMediaFromUrl = (url: string) => {
-  const regex = /tmdb-(movie|tv)-\d+-(.+)/;
+  const regex = /tmdb-(movie|tv)-\d+-(.+?)(?:\?|$)/; // Match title and ignore query params
   const match = url.match(regex);
 
   if (!match) {
@@ -52,7 +52,7 @@ const parseMediaFromUrl = (url: string) => {
 
   return {
     type: match[1], // "movie" or "tv"
-    title: match[2], // Extracted title slug
+    title: match[2].split('?')[0], // Extract title and remove query parameters
   };
 };
 
