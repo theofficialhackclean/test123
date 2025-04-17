@@ -1,12 +1,47 @@
+/* eslint-disable no-console */
+import { flags } from '@/entrypoint/utils/targets';
+import { SourcererOutput, makeSourcerer } from '@/providers/base';
+import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
+import { NotFoundError } from '@/utils/errors';
 
- import { flags } from '@/entrypoint/utils/targets';
- import { SourcererOutput, makeSourcerer } from '@/providers/base';
- import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
- import { NotFoundError } from '@/utils/errors';
- 
- import { Caption } from '../captions';
+import { Caption } from '../captions';
 
+const BASE_URL = 'https://hackflixapi.vercel.app';
 
+// Language mapping
+const languageMap: Record<string, string> = {
+  English: 'en',
+  Spanish: 'es',
+  French: 'fr',
+  German: 'de',
+  Italian: 'it',
+  Portuguese: 'pt',
+  Arabic: 'ar',
+  Russian: 'ru',
+  Japanese: 'ja',
+  Korean: 'ko',
+  Chinese: 'zh',
+  Hindi: 'hi',
+  Turkish: 'tr',
+  Dutch: 'nl',
+  Polish: 'pl',
+  Swedish: 'sv',
+  Indonesian: 'id',
+  Thai: 'th',
+  Vietnamese: 'vi',
+};
+
+// Function to get user token
+const getUserToken = (): string | null => {
+  try {
+    return typeof window !== 'undefined' ? window.localStorage.getItem('febbox_ui_token') : null;
+  } catch (e) {
+    console.warn('Unable to access localStorage:', e);
+    return null;
+  }
+};
+
+// Extract media type and title from the URL
 const parseMediaFromUrl = (url: string) => {
   const regex = /tmdb-(movie|tv)-\d+-(.+)/;
   const match = url.match(regex);
@@ -21,18 +56,25 @@ const parseMediaFromUrl = (url: string) => {
   };
 };
 
+interface StreamData {
+  streams: Record<string, string>;
+  subtitles: Record<string, any>;
+  error?: string;
+  name?: string;
+  size?: string;
+}
+
 async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
   let mediaData;
 
   try {
-    // Extract media type and title from URL
-    mediaData = parseMediaFromUrl(window.location.href);
+    mediaData = parseMediaFromUrl(window.location.href); // Extract media type and title
   } catch (error) {
     console.warn(error.message);
     throw new NotFoundError('Invalid or unsupported media URL.');
   }
 
-  // Construct API URL dynamically
+  // Construct the API URL dynamically
   const apiUrl = `${BASE_URL}/api/all?type=${mediaData.type}&title=${mediaData.title}`;
   const userToken = getUserToken();
 
