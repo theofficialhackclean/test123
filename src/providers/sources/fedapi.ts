@@ -70,8 +70,13 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
   try {
     mediaData = parseMediaFromUrl(window.location.href); // Extract media type and title
   } catch (error) {
-    console.warn(error.message);
-    throw new NotFoundError('Invalid or unsupported media URL.');
+    if (error instanceof Error) {
+      console.warn(error.message);
+      throw new NotFoundError('Invalid or unsupported media URL.');
+    } else {
+      console.warn('An unexpected error occurred:', error);
+      throw new NotFoundError('Unexpected error while parsing media URL.');
+    }
   }
 
   // Construct the API URL dynamically
