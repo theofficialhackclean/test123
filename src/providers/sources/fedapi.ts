@@ -6,7 +6,7 @@ import { NotFoundError } from '@/utils/errors';
 
 import { Caption } from '../captions';
 
-const BASE_URL = 'https://hackflixapi.vercel.app';
+const BASE_URL = 'https://hackflixapi.lightningx.online';
 
 // Language mapping
 const languageMap: Record<string, string> = {
