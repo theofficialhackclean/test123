@@ -3,39 +3,31 @@ import { SourcererOutput, makeSourcerer } from '@/providers/base';
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 
 async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
-  const query = {
-    type: ctx.media.type,
-    title: ctx.media.title,
-    tmdbId: ctx.media.tmdbId,
-    ...(ctx.media.type === 'show' && {
-      season: ctx.media.season.number,
-      episode: ctx.media.episode.number,
-    }),
-    releaseYear: ctx.media.releaseYear,
-  };
+  const embeds = [];
 
-  const embeds = [
-    {
-      embedId: 'xprime-fox',
-      url: JSON.stringify(query),
-    },
-    {
-      embedId: 'xprime-apollo',
-      url: JSON.stringify(query),
-    },
-    {
-      embedId: 'xprime-streambox',
-      url: JSON.stringify(query),
-    },
-    {
-      embedId: 'xprime-marant',
-      url: JSON.stringify(query),
-    },
-    {
-      embedId: 'xprime-primenet',
-      url: JSON.stringify(query),
-    },
-  ];
+  embeds.push({
+    embedId: 'xprime-fox',
+    url: JSON.stringify({
+      type: ctx.media.type,
+      title: ctx.media.title,
+      ...(ctx.media.type === 'show' && {
+        season: ctx.media.season.number,
+        episode: ctx.media.episode.number,
+      }),
+    }),
+  });
+
+  embeds.push({
+    embedId: 'xprime-apollo',
+    url: JSON.stringify({
+      type: ctx.media.type,
+      tmdbId: ctx.media.tmdbId,
+      ...(ctx.media.type === 'show' && {
+        season: ctx.media.season.number,
+        episode: ctx.media.episode.number,
+      }),
+    }),
+  });
 
   return { embeds };
 }
