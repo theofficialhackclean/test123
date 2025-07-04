@@ -1,44 +1,34 @@
-/* eslint-disable no-console */
 import { flags } from '@/entrypoint/utils/targets';
 import { SourcererEmbed, SourcererOutput, makeSourcerer } from '@/providers/base';
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 import { NotFoundError } from '@/utils/errors';
 
-const apiUrl = 'https://tom.autoembed.cc';
+const baseUrl = 'https://autoembed.cc/';
 
 async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
-  const mediaType = ctx.media.type === 'show' ? 'tv' : 'movie';
-  let id = ctx.media.tmdbId;
-
-  if (ctx.media.type === 'show') {
-    id = `${id}/${ctx.media.season.number}/${ctx.media.episode.number}`;
-  }
-
-  const data = await ctx.proxiedFetcher(`/api/getVideoSource`, {
-    baseUrl: apiUrl,
+  const playerPage = await ctx.proxiedFetcher(`/embed/player.php`, {
+    baseUrl,
     query: {
-      type: mediaType,
-      id,
-    },
-    headers: {
-      Referer: apiUrl,
+      id: ctx.media.tmdbId,
+      ...(ctx.media.type === 'show' && {
+        s: ctx.media.season.number.toString(),
+        e: ctx.media.episode.number.toString(),
+      }),
     },
   });
 
-  console.log(data);
+  const fileDataMatch = playerPage.match(/"file": (\[.*?\])/s);
+  if (!fileDataMatch[1]) throw new NotFoundError('No data found');
 
-  if (!data) throw new NotFoundError('Failed to fetch video source');
-  if (!data.videoSource) throw new NotFoundError('No video source found');
-  ctx.progress(50);
+  const fileData: { title: string; file: string }[] = JSON.parse(fileDataMatch[1].replace(/,\s*\]$/, ']'));
 
-  const embeds: SourcererEmbed[] = [
-    {
-      embedId: `autoembed-english`,
-      url: data.videoSource,
-    },
-  ];
+  const embeds: SourcererEmbed[] = [];
 
-  ctx.progress(90);
+  for (const stream of fileData) {
+    const url = stream.file;
+    if (!url) continue;
+    embeds.push({ embedId: `autoembed-${stream.title.toLowerCase().trim()}`, url });
+  }
 
   return {
     embeds,
