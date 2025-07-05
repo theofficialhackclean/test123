@@ -85,7 +85,7 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
   }
 
   // Construct the API URL dynamically
-  const apiUrl = `${BASE_URL}/api/all?type=${mediaData.type}&title=${mediaData.title}`;
+  let apiUrl = `${BASE_URL}/api/all?type=${mediaData.type}&title=${mediaData.title}`;
   if (mediaData.type === 'tv' && mediaData.season && mediaData.episode) {
     apiUrl += `&season=${mediaData.season}&episode=${mediaData.episode}`;
   }
