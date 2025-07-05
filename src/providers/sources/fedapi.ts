@@ -49,10 +49,15 @@ const parseMediaFromUrl = (url: string) => {
   if (!match) {
     throw new Error('Invalid media URL format.');
   }
-
+ const urlObj = new URL(url);
+ const season = urlObj.searchParams.get('season');
+ const episode = urlObj.searchParams.get('episode');
+  
   return {
     type: match[1], // "movie" or "tv"
-    title: match[2].split('?')[0], // Extract title and remove query parameters
+    title: match[2].split('?')[0], // Extract title and remove query parameters  
+    season: season ? parseInt(season, 10) : undefined,
+    episode: episode ? parseInt(episode, 10) : undefined,
   };
 };
 
@@ -81,6 +86,9 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
 
   // Construct the API URL dynamically
   const apiUrl = `${BASE_URL}/api/all?type=${mediaData.type}&title=${mediaData.title}`;
+  if (mediaData.type === 'tv' && mediaData.season && mediaData.episode) {
+    apiUrl += `&season=${mediaData.season}&episode=${mediaData.episode}`;
+  }
   const userToken = getUserToken();
 
   if (userToken) {
