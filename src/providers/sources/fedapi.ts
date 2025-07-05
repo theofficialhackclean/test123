@@ -53,16 +53,17 @@ interface StreamData {
 }
 
 async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
-    const title = ctx.media.title?.toLowerCase().replace(/\s+/g, '-');
-  const isShow = 'season' in ctx.media && 'episode' in ctx.media;
-  const type = isShow ? 'tv' : 'movie';
- 
+ const title = ctx.media.title?.toLowerCase().replace(/\s+/g, '-');
 
-  // Construct the API URL dynamically
+  const isShow = (ctx as ShowScrapeContext).media.type === 'show';
+  const type = isShow ? 'tv' : 'movie';
+
   let apiUrl = `${BASE_URL}/api/all?type=${type}&title=${title}`;
+
   if (isShow) {
-    const season = ctx.media.season?.number;
-    const episode = ctx.media.episode?.number;
+    const showMedia = (ctx as ShowScrapeContext).media;
+    const season = showMedia.season?.number;
+    const episode = showMedia.episode?.number;
 
     if (season == null || episode == null) {
       throw new NotFoundError('Missing season or episode number in context');
