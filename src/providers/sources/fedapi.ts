@@ -43,19 +43,24 @@ const getUserToken = (): string | null => {
 
 // Extract media type and title from the URL
 const parseMediaFromUrl = (url: string) => {
-  const regex = /tmdb-(movie|tv)-\d+-(.+?)(?:\?|$)/; // Match title and ignore query params
+  const regex = /tmdb-(movie|tv)-\d+-(.+?)(?:\?|$)/;
   const match = url.match(regex);
 
   if (!match) {
     throw new Error('Invalid media URL format.');
   }
- const urlObj = new URL(url);
- const season = urlObj.searchParams.get('season');
- const episode = urlObj.searchParams.get('episode');
-  
+
+  const urlObj = new URL(url);
+  const season = urlObj.searchParams.get('season');
+  const episode = urlObj.searchParams.get('episode');
+
+  // Clean the title to strip out trailing slugs like "/1234/5678"
+  let rawTitle = match[2].split('?')[0];
+  rawTitle = rawTitle.replace(/\/\d+(\/\d+)?$/, ''); // remove /number or /number/number
+
   return {
     type: match[1], // "movie" or "tv"
-    title: match[2].split('?')[0], // Extract title and remove query parameters  
+    title: rawTitle, // Clean title
     season: season ? parseInt(season, 10) : undefined,
     episode: episode ? parseInt(episode, 10) : undefined,
   };
