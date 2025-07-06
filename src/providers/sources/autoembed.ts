@@ -3,7 +3,7 @@ import { SourcererEmbed, SourcererOutput, makeSourcerer } from '@/providers/base
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 import { NotFoundError } from '@/utils/errors';
 
-const baseUrl = 'https://autoembed.cc/';
+const baseUrl = 'https://autoembed.pro/';
 
 async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
   const playerPage = await ctx.proxiedFetcher(`/embed/player.php`, {
