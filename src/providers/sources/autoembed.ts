@@ -6,7 +6,7 @@ import { NotFoundError } from '@/utils/errors';
 const baseUrl = 'https://autoembed.pro/';
 
 async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
-  const playerPage = await ctx.proxiedFetcher(`/embed/player.php`, {
+  const playerPage = await ctx.proxiedFetcher(`/embed/`, {
     baseUrl,
     query: {
       id: ctx.media.tmdbId,
