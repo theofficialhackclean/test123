@@ -30,7 +30,7 @@ function embed(provider: { id: string; name: string; rank: number; disabled?: bo
             id: 'primary',
             type: 'file',
             qualities: {
-              [getValidQualityFromString(quality || '')]: { url, type: 'mp4' || "mkv" },
+              [getValidQualityFromString(quality || '')]: { url, type: 'mp4' || 'mkv' },
             },
             flags: [flags.CORS_ALLOWED],
             captions: [],
