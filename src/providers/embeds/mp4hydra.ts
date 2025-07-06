@@ -12,7 +12,7 @@ const providers = [
     id: 'mp4hydra-2',
     name: 'Server 2',
     rank: 35,
-    disabled: true,
+    disabled: false,
   },
 ];
 
@@ -30,7 +30,7 @@ function embed(provider: { id: string; name: string; rank: number; disabled?: bo
             id: 'primary',
             type: 'file',
             qualities: {
-              [getValidQualityFromString(quality || '')]: { url, type: 'mp4' },
+              [getValidQualityFromString(quality || '')]: { url, type: 'mp4' || "mkv" },
             },
             flags: [flags.CORS_ALLOWED],
             captions: [],
