@@ -53,24 +53,24 @@ interface StreamData {
 }
 
 async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
- const title = ctx.media.title?.toLowerCase().replace(/\s+/g, '-');
-
+  const rawTitle = ctx.media.title || '';
   const isShow = (ctx as ShowScrapeContext).media.type === 'show';
   const type = isShow ? 'tv' : 'movie';
 
-  let apiUrl = `${BASE_URL}/api/all?type=${type}&title=${title}`;
+  let apiUrl = `${BASE_URL}/api/all?type=${type}&title=${encodeURIComponent(rawTitle)}`;
 
   if (isShow) {
-    const showMedia = (ctx as ShowScrapeContext).media;
-    const season = showMedia.season?.number;
-    const episode = showMedia.episode?.number;
+    const showMedia = ctx as ShowScrapeContext;
+    const season = showMedia.media.season?.number;
+    const episode = showMedia.media.episode?.number;
 
     if (season == null || episode == null) {
       throw new NotFoundError('Missing season or episode number in context');
     }
 
-    apiUrl += `&season=${season}&episode=${episode}`;
+    apiUrl += `&season=${encodeURIComponent(season)}&episode=${encodeURIComponent(episode)}`;
   }
+
   const userToken = getUserToken();
 
   if (userToken) {
@@ -83,35 +83,35 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
     },
   });
 
-  if (data?.error === 'No results found in MovieBox search') {
-    throw new NotFoundError('No stream found');
-  }
   if (!data) throw new NotFoundError('No response from API');
+  if (data.error) throw new NotFoundError(data.error);
+
   ctx.progress(50);
 
-  const streams = Object.entries(data.streams).reduce((acc: Record<string, string>, [quality, url]) => {
+  const streams = Object.entries(data.streams || {}).reduce((acc: Record<number, string>, [quality, url]) => {
     let qualityKey: number;
-    if (quality === '4K') {
+    if (quality.toLowerCase() === '4k') {
       qualityKey = 2160;
-    } else if (quality === 'ORG') {
-      return acc;
+    } else if (quality.toLowerCase() === 'org') {
+      return acc; // skip raw/original
     } else {
-      qualityKey = parseInt(quality.replace('P', ''), 10);
+      qualityKey = parseInt(quality.replace(/p/i, ''), 10);
     }
-    if (Number.isNaN(qualityKey) || acc[qualityKey]) return acc;
-    acc[qualityKey] = url;
+    if (!Number.isNaN(qualityKey) && !acc[qualityKey]) {
+      acc[qualityKey] = url;
+    }
     return acc;
   }, {});
 
   const captions: Caption[] = [];
-  if (data.subtitles) {
+  if (data.subtitles && typeof data.subtitles === 'object') {
     for (const [langKey, subtitleData] of Object.entries(data.subtitles)) {
       const languageKeyPart = langKey.split('_')[0];
       const languageName = languageKeyPart.charAt(0).toUpperCase() + languageKeyPart.slice(1);
       const languageCode = languageMap[languageName]?.toLowerCase() ?? 'unknown';
 
-      if (subtitleData.subtitle_link) {
-        const url = subtitleData.subtitle_link;
+      if (subtitleData && (subtitleData as any).subtitle_link) {
+        const url = (subtitleData as any).subtitle_link;
         const isVtt = url.toLowerCase().endsWith('.vtt');
         captions.push({
           type: isVtt ? 'vtt' : 'srt',
@@ -133,36 +133,11 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
         id: 'primary',
         captions,
         qualities: {
-          ...(streams[2160] && {
-            '4k': {
-              type: 'mp4',
-              url: streams[2160],
-            },
-          }),
-          ...(streams[1080] && {
-            1080: {
-              type: 'mp4',
-              url: streams[1080],
-            },
-          }),
-          ...(streams[720] && {
-            720: {
-              type: 'mp4',
-              url: streams[720],
-            },
-          }),
-          ...(streams[480] && {
-            480: {
-              type: 'mp4',
-              url: streams[480],
-            },
-          }),
-          ...(streams[360] && {
-            360: {
-              type: 'mp4',
-              url: streams[360],
-            },
-          }),
+          ...(streams[2160] && { '4k': { type: 'mp4', url: streams[2160] } }),
+          ...(streams[1080] && { 1080: { type: 'mp4', url: streams[1080] } }),
+          ...(streams[720] && { 720: { type: 'mp4', url: streams[720] } }),
+          ...(streams[480] && { 480: { type: 'mp4', url: streams[480] } }),
+          ...(streams[360] && { 360: { type: 'mp4', url: streams[360] } }),
         },
         type: 'file',
         flags: [flags.CORS_ALLOWED],
