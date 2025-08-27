@@ -2,6 +2,7 @@
 // import { astraScraper, novaScraper, orionScraper } from '@/providers/embeds/whvx';
 import { warezcdnembedMp4Scraper } from '@/providers/embeds/warezcdn/mp4';
 import { xprimeApolloEmbed, xprimeFoxEmbed } from '@/providers/embeds/xprime';
+import { vidsrcScraper } from '@/providers/sources/vidsrc';
 import { embedsuScraper } from '@/providers/sources/embedsu';
 import { uiraliveScraper } from '@/providers/sources/uiralive';
 import { Stream } from '@/providers/streams';
@@ -19,6 +20,7 @@ const SKIP_VALIDATION_CHECK_IDS = [
   embedsuScraper.id,
   xprimeFoxEmbed.id,
   xprimeApolloEmbed.id,
+  vidsrcScraper.id,
 ];
 
 export function isValidStream(stream: Stream | undefined): boolean {

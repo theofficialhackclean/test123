@@ -1,6 +1,7 @@
 import { Embed, Sourcerer } from '@/providers/base';
 import { doodScraper } from '@/providers/embeds/dood';
 import { mixdropScraper } from '@/providers/embeds/mixdrop';
+import { vidsrcScraper } from '@/providers/sources/vidsrc';
 import {
   riveAsiacloudScraper,
   riveEe3Scraper,
@@ -114,6 +115,7 @@ export function gatherAllSources(): Array<Sourcerer> {
     xprimeScraper,
     lookmovieScraper,
     rgshowsScraper,
+    vidsrcScraper,
   ];
 }
 
