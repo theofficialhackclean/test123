@@ -80,6 +80,7 @@ import { warezcdnScraper } from './sources/warezcdn';
 import { webtorScraper } from './sources/webtor';
 import { xprimeScraper } from './sources/xprime';
 import { lookmovieScraper } from './sources/lookmovie';
+import { rgshowsScraper } from './sources/rgshows';
 
 export function gatherAllSources(): Array<Sourcerer> {
   // all sources are gathered here
@@ -112,6 +113,7 @@ export function gatherAllSources(): Array<Sourcerer> {
     EightStreamScraper,
     xprimeScraper,
     lookmovieScraper,
+    rgshowsScraper,
   ];
 }
 
