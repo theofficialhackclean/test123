@@ -8,7 +8,6 @@ const baseUrl = 'api.rgshows.me';
 const headers = {
   referer: 'https://rgshows.me/',
   origin: 'https://rgshows.me',
-  host: baseUrl,
   'User-Agent':
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
 };
@@ -32,12 +31,13 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
   }
 
   const streamUrl = res.stream.url;
-  const streamHost = new URL(streamUrl).host;
+
+  // ✅ Fixed headers for HLS chunks — no manual "host"
   const m3u8Headers = {
-    ...headers,
-    host: streamHost,
-    origin: 'https://www.rgshows.me',
-    referer: 'https://www.rgshows.me/',
+    'User-Agent':
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+    referer: 'https://rgshows.me/',
+    origin: 'https://rgshows.me',
   };
 
   ctx.progress(100);
