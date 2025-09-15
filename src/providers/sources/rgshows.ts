@@ -12,7 +12,24 @@ const headers = {
   accept: 'application/json, text/plain, */*',
 };
 
-async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
+// ⏳ Safe wrapper to avoid freezing
+async function fetchWithTimeout<T>(
+  fetcher: typeof (async (url: string, opts?: any) => Promise<any>),
+  url: string,
+  opts: any,
+  ms: number
+): Promise<T> {
+  return Promise.race([
+    fetcher(url, opts),
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout exceeded')), ms)
+    ),
+  ]);
+}
+
+async function comboScraper(
+  ctx: ShowScrapeContext | MovieScrapeContext
+): Promise<SourcererOutput> {
   let url = `https://${baseUrl}/main`;
 
   if (ctx.media.type === 'movie') {
@@ -21,17 +38,11 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
     url += `/tv/${ctx.media.tmdbId}/${ctx.media.season.number}/${ctx.media.episode.number}`;
   }
 
-  // ⏳ Add timeout so Cloudflare hangs don’t freeze everything
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10_000);
-
   let res: any;
   try {
-    res = await ctx.proxiedFetcher(url, { headers, signal: controller.signal });
+    res = await fetchWithTimeout(ctx.proxiedFetcher, url, { headers }, 10000);
   } catch (err) {
     throw new NotFoundError('Failed to fetch stream (Cloudflare or timeout)');
-  } finally {
-    clearTimeout(timeout);
   }
 
   if (!res?.stream?.url) {
@@ -44,7 +55,7 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
 
   const streamUrl = res.stream.url;
 
-  // ✅ Use same headers for manifest + chunks
+  // ✅ Use consistent headers for manifest + chunks
   const m3u8Headers = {
     ...headers,
     accept: '*/*',
