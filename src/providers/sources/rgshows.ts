@@ -1,6 +1,5 @@
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 import { NotFoundError } from '@/utils/errors';
-
 import { SourcererOutput, makeSourcerer } from '../base';
 
 const baseUrl = 'api.rgshows.me';
@@ -10,6 +9,7 @@ const headers = {
   origin: 'https://rgshows.me',
   'User-Agent':
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+  accept: 'application/json, text/plain, */*',
 };
 
 async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
@@ -17,11 +17,23 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
 
   if (ctx.media.type === 'movie') {
     url += `/movie/${ctx.media.tmdbId}`;
-  } else if (ctx.media.type === 'show') {
+  } else {
     url += `/tv/${ctx.media.tmdbId}/${ctx.media.season.number}/${ctx.media.episode.number}`;
   }
 
-  const res = await ctx.proxiedFetcher(url, { headers });
+  // ⏳ Add timeout so Cloudflare hangs don’t freeze everything
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
+
+  let res: any;
+  try {
+    res = await ctx.proxiedFetcher(url, { headers, signal: controller.signal });
+  } catch (err) {
+    throw new NotFoundError('Failed to fetch stream (Cloudflare or timeout)');
+  } finally {
+    clearTimeout(timeout);
+  }
+
   if (!res?.stream?.url) {
     throw new NotFoundError('No streams found');
   }
@@ -32,16 +44,15 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
 
   const streamUrl = res.stream.url;
 
-  // ✅ Fixed headers for HLS chunks — no manual "host"
+  // ✅ Use same headers for manifest + chunks
   const m3u8Headers = {
-      'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-      referer: 'https://rgshows.me/',
-      accept: '*/*',
-      'accept-encoding': 'gzip, deflate, br',
-      connection: 'keep-alive',
-      range: 'bytes=0-',
-    };
+    ...headers,
+    accept: '*/*',
+    'accept-encoding': 'gzip, deflate, br',
+    connection: 'keep-alive',
+    range: 'bytes=0-',
+  };
+
   ctx.progress(100);
 
   return {
