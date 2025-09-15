@@ -34,12 +34,14 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
 
   // ✅ Fixed headers for HLS chunks — no manual "host"
   const m3u8Headers = {
-    'User-Agent':
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-    referer: 'https://rgshows.me/',
-    origin: 'https://rgshows.me',
-  };
-
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      referer: 'https://rgshows.me/',
+      accept: '*/*',
+      'accept-encoding': 'gzip, deflate, br',
+      connection: 'keep-alive',
+      range: 'bytes=0-',
+    };
   ctx.progress(100);
 
   return {
