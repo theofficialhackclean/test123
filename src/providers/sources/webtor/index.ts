@@ -1,7 +1,7 @@
 import { flags } from '@/entrypoint/utils/targets';
 import { SourcererOutput, makeSourcerer } from '@/providers/base';
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
-import { categorizeStreams, getMagnetUrl, getTopStreamsBySeeders } from './common';
+import { categorizeStreams, getTopStreamsBySeeders } from './common';
 import { Response } from './types';
 
 async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
@@ -26,17 +26,15 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
     if (!topStream) return;
 
     try {
-      // Build a direct Webtor embed URL with file index
-      const magnet = getMagnetUrl(topStream.infoHash, topStream.name);
-      const fileIndex = 0; // You can adjust this if you want a specific file
-      const webtorUrl = `https://webtor.io/show?magnet=${encodeURIComponent(magnet)}&file=${fileIndex}`;
+      // Build direct local torrent URL with file name
+      const torrentUrl = `http://localhost/torrent/${encodeURIComponent(topStream.name)}`;
 
       embeds.push({
-        embedId: `webtor-${category.replace('p', '')}`,
-        url: webtorUrl,
+        embedId: `local-${category.replace('p', '')}`,
+        url: torrentUrl,
       });
     } catch (error) {
-      console.error(`Failed to create Webtor URL for ${category}:`, error);
+      console.error(`Failed to create local torrent URL for ${category}:`, error);
     }
   });
 
@@ -45,12 +43,13 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
   return { embeds };
 }
 
-export const webtorScraper = makeSourcerer({
-  id: 'webtor',
-  name: 'Webtor',
+export const localTorrentScraper = makeSourcerer({
+  id: 'local-torrent',
+  name: 'Local Torrent',
   rank: 2,
   disabled: false,
   flags: [flags.CORS_ALLOWED],
   scrapeMovie: comboScraper,
   scrapeShow: comboScraper,
 });
+
