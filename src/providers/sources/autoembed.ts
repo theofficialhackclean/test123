@@ -17,32 +17,22 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
     },
   });
 
-  const fileDataMatch = playerPage.match(/"file":\s*(\[.*?\])/s);
-  if (!fileDataMatch) throw new NotFoundError('No file data match found');
+  const fileDataMatch = playerPage.match(/"file": (\[.*?\])/s);
+  if (!fileDataMatch[1]) throw new NotFoundError('No data found');
 
-  let fileData: { title: string; file: string }[];
-  try {
-    fileData = JSON.parse(
-      fileDataMatch[1].replace(/,\s*\]$/, ']') // remove trailing commas
-    );
-  } catch (err) {
-    throw new NotFoundError('Failed to parse file data JSON');
-  }
+  const fileData: { title: string; file: string }[] = JSON.parse(fileDataMatch[1].replace(/,\s*\]$/, ']'));
 
   const embeds: SourcererEmbed[] = [];
 
   for (const stream of fileData) {
-    const url = stream.file?.trim();
+    const url = stream.file;
     if (!url) continue;
-    embeds.push({
-      embedId: `autoembed-${stream.title.toLowerCase().replace(/\s+/g, '-')}`,
-      url,
-    });
+    embeds.push({ embedId: `autoembed-${stream.title.toLowerCase().trim()}`, url });
   }
 
-  if (!embeds.length) throw new NotFoundError('No valid embeds found');
-
-  return { embeds };
+  return {
+    embeds,
+  };
 }
 
 export const autoembedScraper = makeSourcerer({
