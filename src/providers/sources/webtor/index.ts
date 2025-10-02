@@ -4,11 +4,17 @@ import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 import { categorizeStreams, getTopStreamsBySeeders, getMagnetUrl } from './common';
 import { Response } from './types';
 
-// Helper: Get the torrent name from localhost using the magnet link
-async function getTorrentNameFromMagnet(magnet: string, ctx: ShowScrapeContext | MovieScrapeContext): Promise<string> {
-  const nameResponse = await ctx.fetcher(`http://localhost/torrent/${encodeURIComponent(magnet)}/name`);
-  const data = typeof nameResponse === 'string' ? JSON.parse(nameResponse) : nameResponse;
-  return data.name;
+// Helper: send magnet link to localhost/torrent/name and get plain text name
+async function getTorrentName(magnet: string, ctx: ShowScrapeContext | MovieScrapeContext): Promise<string> {
+  const response = await ctx.fetcher('http://localhost/torrent/name', {
+    method: 'POST', // or 'GET' if your API supports query param
+    body: JSON.stringify({ magnet }),
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  // Treat response as plain text
+  const name = typeof response === 'string' ? response : await response.text?.();
+  return name?.trim() || '';
 }
 
 async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
@@ -17,7 +23,6 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
       ? `movie/${ctx.media.imdbId}.json`
       : `series/${ctx.media.imdbId}:${ctx.media.season.number}:${ctx.media.episode.number}.json`;
 
-  // Fetch streams from torrentio
   const response: Response = await ctx
     .fetcher(
       `https://torrentio.strem.fun/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy,magnetdl,horriblesubs,nyaasi,tokyotosho,anidex/stream/${search}`
@@ -34,13 +39,13 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
     if (!topStream) continue;
 
     try {
-      // Step 1: Get the magnet link
+      // Step 1: Get magnet link
       const magnetLink = getMagnetUrl(topStream.infoHash, topStream.name);
 
-      // Step 2: Get the torrent name from localhost using the magnet
-      const torrentName = await getTorrentNameFromMagnet(magnetLink, ctx);
+      // Step 2: Get torrent name from localhost/torrent/name (plain text)
+      const torrentName = await getTorrentName(magnetLink, ctx);
 
-      // Step 3: Build Webtor URL using the torrent name
+      // Step 3: Build final Webtor URL using the name
       const webtorUrl = `http://localhost/torrent/${encodeURIComponent(torrentName)}`;
 
       embeds.push({
