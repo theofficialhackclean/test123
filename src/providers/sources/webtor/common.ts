@@ -31,7 +31,7 @@ export function getMagnetUrl(infoHash: string, name: string): string {
 
 export function constructProxyUrl(magnetUrl: string): string {
   const encodedMagnet = encodeURIComponent(magnetUrl);
-  return `https://savingshub.online/api/fetchHls?magnet=${encodedMagnet}`; // Thanks to Custom and DebateMyRoomba for this API
+  return `https://webtor.io/api/v1/magnet/resolve?magnet=${encodedMagnet}`; // Thanks to Custom and DebateMyRoomba for this API
 }
 
 export function categorizeStreams(streams: Stream[]): Record<string, Stream[]> {
