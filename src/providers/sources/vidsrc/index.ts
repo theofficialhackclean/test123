@@ -51,7 +51,7 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 F
   ctx.progress(50);
 
   const rcpHtml = await ctx.proxiedFetcher<string>(rcpUrl, {
-    headers: { Referer: embedUrl, 'User-Agent': 'Mozilla/5.0' },
+    headers: { Referer: embedUrl, 'User-Agent': UA },
   });
 
   // Find the script with prorcp
@@ -63,7 +63,7 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 F
   ctx.progress(70);
 
   const finalHtml = await ctx.proxiedFetcher<string>(prorcpUrl, {
-    headers: { Referer: rcpUrl, 'User-Agent': 'Mozilla/5.0' },
+    headers: { Referer: rcpUrl, 'User-Agent': UA },
   });
 
   // Find script containing Playerjs
