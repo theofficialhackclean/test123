@@ -1,7 +1,7 @@
 import { flags } from '@/entrypoint/utils/targets';
 import { SourcererOutput, makeSourcerer } from '@/providers/base';
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
-import { categorizeStreams, getMagnetUrl, getTopStreamsBySeeders } from './common';
+import { categorizeStreams, getTopStreamsBySeeders, getMagnetUrl } from './common';
 import { Response } from './types';
 
 async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
@@ -21,24 +21,36 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
   const categories = categorizeStreams(response.streams);
   const embeds: { embedId: string; url: string }[] = [];
 
-  Object.entries(categories).forEach(([category, streams]) => {
+  for (const [category, streams] of Object.entries(categories)) {
     const [topStream] = getTopStreamsBySeeders(streams, 1);
-    if (!topStream) return;
+    if (!topStream) continue;
 
     try {
-      // Build a direct Webtor embed URL with file index
+      // Generate magnet link
       const magnet = getMagnetUrl(topStream.infoHash, topStream.name);
-      const fileIndex = 0; // You can adjust this if you want a specific file
-      const webtorUrl = `http://localhost/torrent/${encodeURIComponent(topStream.infoHash)}`;
 
-      embeds.push({
-        embedId: `webtor-${category.replace('p', '')}`,
-        url: webtorUrl,
+      // Send magnet to local server to add torrent
+      await fetch(`http://localhost:80/add-torrent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ magnet }),
+      });
+
+      // Fetch list of files for the torrent
+      const filesResponse = await fetch(`http://localhost:80/torrent-files`);
+      const files: { name: string }[] = await filesResponse.json();
+
+      // Build URLs for all files
+      files.forEach((file, i) => {
+        embeds.push({
+          embedId: `webtor-${category.replace('p', '')}-${i}`,
+          url: `http://localhost:80/torrent/${encodeURIComponent(file.name)}`,
+        });
       });
     } catch (error) {
-      console.error(`Failed to create Webtor URL for ${category}:`, error);
+      console.error(`Failed to create local torrent URLs for ${category}:`, error);
     }
-  });
+  }
 
   ctx.progress(90);
 
