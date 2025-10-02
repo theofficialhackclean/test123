@@ -2,7 +2,7 @@ import { flags } from '@/entrypoint/utils/targets';
 import { SourcererOutput, makeSourcerer } from '@/providers/base';
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 
-import { categorizeStreams, constructProxyUrl, getMagnetUrl, getTopStreamsBySeeders } from './common';
+import { categorizeStreams, getMagnetUrl, getTopStreamsBySeeders } from './common';
 import { Response } from './types';
 
 async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
@@ -13,7 +13,7 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
 
   const response: Response = await ctx
     .fetcher(
-      `https://torrentio.strem.fun/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy,magnetdl,horriblesubs,nyaasi,tokyotosho,anidex/stream/${search}`,
+      `https://torrentio.strem.fun/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy,magnetdl,horriblesubs,nyaasi,tokyotosho,anidex/stream/${search}`
     )
     .then((res) => (typeof res === 'string' ? JSON.parse(res) : res));
 
@@ -22,38 +22,24 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
   const categories = categorizeStreams(response.streams);
   const embeds: { embedId: string; url: string }[] = [];
 
-  const qualityResults = await Promise.all(
-    Object.entries(categories).map(async ([category, streams]) => {
-      const [topStream] = getTopStreamsBySeeders(streams, 1);
-      if (!topStream) return null;
+  Object.entries(categories).forEach(([category, streams]) => {
+    const [topStream] = getTopStreamsBySeeders(streams, 1);
+    if (!topStream) return;
 
-      try {
-        const magnet = getMagnetUrl(topStream.infoHash, topStream.name);
-        const apiUrl = constructProxyUrl(magnet);
+    try {
+      // Build a direct Webtor embed URL
+      const magnet = getMagnetUrl(topStream.infoHash, topStream.name);
+      const webtorUrl = `https://webtor.io/show?magnet=${encodeURIComponent(magnet)}`;
 
-        const apiResponse = await ctx.fetcher(apiUrl);
-        const responseData = typeof apiResponse === 'string' ? JSON.parse(apiResponse) : apiResponse;
-        if (!responseData?.m3u8Link) throw new Error('No m3u8 link in response');
-
-        return {
-          quality: category,
-          url: responseData.m3u8Link,
-        };
-      } catch (error) {
-        console.error(`Failed to fetch ${category}:`, error);
-        return null;
-      }
-    }),
-  );
-
-  qualityResults.forEach((result) => {
-    if (result?.url) {
       embeds.push({
-        embedId: `webtor-${result.quality.replace('p', '')}`,
-        url: result.url,
+        embedId: `webtor-${category.replace('p', '')}`,
+        url: webtorUrl,
       });
+    } catch (error) {
+      console.error(`Failed to create Webtor URL for ${category}:`, error);
     }
   });
+
   ctx.progress(90);
 
   return { embeds };
