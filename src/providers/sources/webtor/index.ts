@@ -1,12 +1,12 @@
 import { flags } from '@/entrypoint/utils/targets';
 import { SourcererOutput, makeSourcerer } from '@/providers/base';
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
-import { categorizeStreams, getTopStreamsBySeeders } from './common';
+import { categorizeStreams, getTopStreamsBySeeders, getMagnetUrl } from './common';
 import { Response } from './types';
 
-// Helper to fetch the torrent name from /name endpoint
-async function getTorrentName(infoHash: string, ctx: ShowScrapeContext | MovieScrapeContext): Promise<string> {
-  const nameResponse = await ctx.fetcher(`http://localhost/torrent/${encodeURIComponent(infoHash)}/name`);
+// Helper: Get the torrent name from localhost using the magnet link
+async function getTorrentNameFromMagnet(magnet: string, ctx: ShowScrapeContext | MovieScrapeContext): Promise<string> {
+  const nameResponse = await ctx.fetcher(`http://localhost/torrent/${encodeURIComponent(magnet)}/name`);
   const data = typeof nameResponse === 'string' ? JSON.parse(nameResponse) : nameResponse;
   return data.name;
 }
@@ -29,16 +29,18 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
   const categories = categorizeStreams(response.streams);
   const embeds: { embedId: string; url: string }[] = [];
 
-  // Loop through each category
   for (const [category, streams] of Object.entries(categories)) {
     const [topStream] = getTopStreamsBySeeders(streams, 1);
     if (!topStream) continue;
 
     try {
-      // Fetch the actual torrent name using infoHash
-      const torrentName = await getTorrentName(topStream.infoHash, ctx);
+      // Step 1: Get the magnet link
+      const magnetLink = getMagnetUrl(topStream.infoHash, topStream.name);
 
-      // Build Webtor URL using the name (no infoHash here)
+      // Step 2: Get the torrent name from localhost using the magnet
+      const torrentName = await getTorrentNameFromMagnet(magnetLink, ctx);
+
+      // Step 3: Build Webtor URL using the torrent name
       const webtorUrl = `http://localhost/torrent/${encodeURIComponent(torrentName)}`;
 
       embeds.push({
@@ -55,7 +57,6 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
   return { embeds };
 }
 
-// Export the scraper
 export const webtorScraper = makeSourcerer({
   id: 'webtor',
   name: 'Webtor',
