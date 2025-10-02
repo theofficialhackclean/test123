@@ -4,17 +4,25 @@ import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 import { categorizeStreams, getTopStreamsBySeeders, getMagnetUrl } from './common';
 import { Response } from './types';
 
-// Helper: load torrent via magnet link and get its name
+// Helper: load torrent via magnet and wait for the name to be available
 async function getTorrentName(magnet: string, ctx: ShowScrapeContext | MovieScrapeContext): Promise<string> {
-  // Send the magnet to localhost so it loads the torrent
+  // Step 1: load the torrent on localhost
   await ctx.fetcher(`http://localhost/?magnet=${encodeURIComponent(magnet)}`);
 
-  // Now get the torrent name
-  const response = await ctx.fetcher('http://localhost/torrent/name');
+  // Step 2: poll until the name is available
+  let torrentName = '';
+  for (let i = 0; i < 10; i++) { // try up to 10 times
+    const response = await ctx.fetcher('http://localhost/torrent/name');
+    torrentName = typeof response === 'string' ? response.trim() : await response.text?.();
+    if (torrentName) break; // stop polling once name is available
+    await new Promise((resolve) => setTimeout(resolve, 500)); // wait 0.5s before retry
+  }
 
-  // Response is plain text
-  const name = typeof response === 'string' ? response : await response.text?.();
-  return name?.trim() || '';
+  if (!torrentName) {
+    console.error('Failed to get torrent name after loading magnet');
+  }
+
+  return torrentName;
 }
 
 async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
@@ -40,13 +48,15 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
     if (!topStream) continue;
 
     try {
-      // Generate magnet link from topStream
+      // Step 1: get magnet link
       const magnet = getMagnetUrl(topStream.infoHash, topStream.name);
 
-      // Load torrent and get its name
+      // Step 2: load torrent and get its name
       const torrentName = await getTorrentName(magnet, ctx);
 
-      // Build Webtor URL using the torrent name
+      if (!torrentName) continue; // skip if name could not be fetched
+
+      // Step 3: build Webtor URL
       const webtorUrl = `http://localhost/torrent/${encodeURIComponent(torrentName)}`;
 
       embeds.push({
