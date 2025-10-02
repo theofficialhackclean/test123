@@ -4,15 +4,14 @@ import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 import { categorizeStreams, getTopStreamsBySeeders, getMagnetUrl } from './common';
 import { Response } from './types';
 
-// Helper: load torrent with magnet first, then get its name
+// Helper: load torrent with magnet in the fragment, then get name
 async function getTorrentName(magnet: string, ctx: ShowScrapeContext | MovieScrapeContext): Promise<string> {
-  // Step 1: load the torrent in localhost
+  // Step 1: load the torrent using #fragment
   await ctx.fetcher(`http://localhost/#${encodeURIComponent(magnet)}`);
 
-  // Step 2: fetch the torrent name
+  // Step 2: fetch the torrent name (plain text document)
   const response = await ctx.fetcher('http://localhost/torrent/name');
 
-  // Response is plain text (document)
   const name = typeof response === 'string' ? response : await response.text?.();
   return name?.trim() || '';
 }
@@ -23,7 +22,6 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
       ? `movie/${ctx.media.imdbId}.json`
       : `series/${ctx.media.imdbId}:${ctx.media.season.number}:${ctx.media.episode.number}.json`;
 
-  // Fetch streams from torrentio
   const response: Response = await ctx
     .fetcher(
       `https://torrentio.strem.fun/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy,magnetdl,horriblesubs,nyaasi,tokyotosho,anidex/stream/${search}`
@@ -43,10 +41,10 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
       // Step 1: get magnet link
       const magnetLink = getMagnetUrl(topStream.infoHash, topStream.name);
 
-      // Step 2: load torrent and get its name
+      // Step 2: load torrent using #fragment and get the name
       const torrentName = await getTorrentName(magnetLink, ctx);
 
-      // Step 3: build final Webtor URL using the torrent name
+      // Step 3: build Webtor URL
       const webtorUrl = `http://localhost/torrent/${encodeURIComponent(torrentName)}`;
 
       embeds.push({
