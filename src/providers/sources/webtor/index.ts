@@ -29,7 +29,6 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
       // Build a direct Webtor embed URL with file index
       const magnet = getMagnetUrl(topStream.infoHash, topStream.name);
       const fileIndex = 0; // You can adjust this if you want a specific file
-       const fileName = topStream.file || topStream.name;
       const webtorUrl = `http://localhost/torrent/${encodeURIComponent(topStream.infoHash)}`;
 
       embeds.push({
