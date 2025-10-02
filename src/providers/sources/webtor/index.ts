@@ -1,8 +1,15 @@
 import { flags } from '@/entrypoint/utils/targets';
 import { SourcererOutput, makeSourcerer } from '@/providers/base';
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
-import { categorizeStreams, getTopStreamsBySeeders, getMagnetUrl } from './common';
+import { categorizeStreams, getTopStreamsBySeeders } from './common';
 import { Response } from './types';
+
+// Helper to fetch the torrent name from /name endpoint
+async function getTorrentName(infoHash: string, ctx: ShowScrapeContext | MovieScrapeContext): Promise<string> {
+  const nameResponse = await ctx.fetcher(`http://localhost/torrent/${encodeURIComponent(infoHash)}/name`);
+  const data = typeof nameResponse === 'string' ? JSON.parse(nameResponse) : nameResponse;
+  return data.name;
+}
 
 async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
   const search =
@@ -10,6 +17,7 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
       ? `movie/${ctx.media.imdbId}.json`
       : `series/${ctx.media.imdbId}:${ctx.media.season.number}:${ctx.media.episode.number}.json`;
 
+  // Fetch streams from torrentio
   const response: Response = await ctx
     .fetcher(
       `https://torrentio.strem.fun/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy,magnetdl,horriblesubs,nyaasi,tokyotosho,anidex/stream/${search}`
@@ -21,34 +29,24 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
   const categories = categorizeStreams(response.streams);
   const embeds: { embedId: string; url: string }[] = [];
 
+  // Loop through each category
   for (const [category, streams] of Object.entries(categories)) {
     const [topStream] = getTopStreamsBySeeders(streams, 1);
     if (!topStream) continue;
 
     try {
-      // Generate magnet link
-      const magnet = getMagnetUrl(topStream.infoHash, topStream.name);
+      // Fetch the actual torrent name using infoHash
+      const torrentName = await getTorrentName(topStream.infoHash, ctx);
 
-      // Send magnet to local server to add torrent
-      await fetch(`http://localhost:80/add-torrent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ magnet }),
-      });
+      // Build Webtor URL using the name (no infoHash here)
+      const webtorUrl = `http://localhost/torrent/${encodeURIComponent(torrentName)}`;
 
-      // Fetch list of files for the torrent
-      const filesResponse = await fetch(`http://localhost:80/torrent-files`);
-      const files: { name: string }[] = await filesResponse.json();
-
-      // Build URLs for all files
-      files.forEach((file, i) => {
-        embeds.push({
-          embedId: `webtor-${category.replace('p', '')}-${i}`,
-          url: `http://localhost:80/torrent/${encodeURIComponent(file.name)}`,
-        });
+      embeds.push({
+        embedId: `webtor-${category.replace('p', '')}`,
+        url: webtorUrl,
       });
     } catch (error) {
-      console.error(`Failed to create local torrent URLs for ${category}:`, error);
+      console.error(`Failed to create Webtor URL for ${category}:`, error);
     }
   }
 
@@ -57,6 +55,7 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
   return { embeds };
 }
 
+// Export the scraper
 export const webtorScraper = makeSourcerer({
   id: 'webtor',
   name: 'Webtor',
