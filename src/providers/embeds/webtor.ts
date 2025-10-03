@@ -19,7 +19,7 @@ function embed(provider: { id: string; rank: number }) {
           {
             id: 'primary',
             type: 'file',
-            playlist: ctx.url,
+            url: ctx.url,
             flags: [flags.CORS_ALLOWED],
             captions: [],
           },
