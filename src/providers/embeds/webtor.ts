@@ -2,7 +2,7 @@ import { flags } from '@/entrypoint/utils/targets';
 import { makeEmbed } from '@/providers/base';
 
 const providers = [
-  { id: 'webtor-1080', rank: 80 }, // 1080p should be a higher rank becuase it loads faster
+  { id: 'webtor-1080', rank: 80 }, // 1080p should be a higher rank because it loads faster
   { id: 'webtor-4k', rank: 79 },
   { id: 'webtor-720', rank: 78 },
   { id: 'webtor-480', rank: 77 },
@@ -15,7 +15,7 @@ function embed(provider: { id: string; rank: number }) {
     rank: provider.rank,
     async scrape(ctx) {
       return {
-        stream: [
+        streams: [
           {
             id: 'primary',
             type: 'file',
@@ -29,4 +29,9 @@ function embed(provider: { id: string; rank: number }) {
   });
 }
 
-export const [webtor4kScraper, webtor1080Scraper, webtor720Scraper, webtor480Scraper] = providers.map(embed);
+export const [
+  webtor1080Scraper,
+  webtor4kScraper,
+  webtor720Scraper,
+  webtor480Scraper,
+] = providers.map(embed);
