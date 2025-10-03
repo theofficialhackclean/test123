@@ -18,7 +18,7 @@ function embed(provider: { id: string; rank: number }) {
         stream: [
           {
             id: 'primary',
-            type: 'hls',
+            type: 'file',
             playlist: ctx.url,
             flags: [flags.CORS_ALLOWED],
             captions: [],
