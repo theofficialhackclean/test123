@@ -4,27 +4,6 @@ import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 import { categorizeStreams, getTopStreamsBySeeders, getMagnetUrl } from './common';
 import { Response } from './types';
 
-// Helper: load torrent via magnet and wait for the name to be available
-async function getTorrentName(magnet: string, ctx: ShowScrapeContext | MovieScrapeContext): Promise<string> {
-  // Step 1: load the torrent on localhost
-  await ctx.fetcher(`http://localhost/?magnet=${encodeURIComponent(magnet)}`);
-
-  // Step 2: poll until the name is available
-  let torrentName = '';
-  for (let i = 0; i < 10; i++) { // try up to 10 times
-    const response = await ctx.fetcher('http://localhost/torrent/name');
-    torrentName = typeof response === 'string' ? response.trim() : await response.text?.();
-    if (torrentName) break; // stop polling once name is available
-    await new Promise((resolve) => setTimeout(resolve, 500)); // wait 0.5s before retry
-  }
-
-  if (!torrentName) {
-    console.error('Failed to get torrent name after loading magnet');
-  }
-
-  return torrentName;
-}
-
 async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
   const search =
     ctx.media.type === 'movie'
@@ -48,23 +27,21 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
     if (!topStream) continue;
 
     try {
-      // Step 1: get magnet link
+      // Build magnet link
       const magnet = getMagnetUrl(topStream.infoHash, topStream.name);
 
-      // Step 2: load torrent and get its name
-      const torrentName = await getTorrentName(magnet, ctx);
-
-      if (!torrentName) continue; // skip if name could not be fetched
-
-      // Step 3: build Webtor URL
-      const webtorUrl = `http://localhost/torrent/${encodeURIComponent(torrentName)}`;
+      // Build localhost endpoint
+      let localUrl = `http://localhost/magnet/download?link=${encodeURIComponent(magnet)}`;
+      if (ctx.media.type === 'show') {
+        localUrl += `&season=${ctx.media.season.number}&episode=${ctx.media.episode.number}`;
+      }
 
       embeds.push({
-        embedId: `webtor-${category.replace('p', '')}`,
-        url: webtorUrl,
+        embedId: `local-${category.replace('p', '')}`,
+        url: localUrl,
       });
     } catch (error) {
-      console.error(`Failed to create Webtor URL for ${category}:`, error);
+      console.error(`Failed to create local magnet URL for ${category}:`, error);
     }
   }
 
