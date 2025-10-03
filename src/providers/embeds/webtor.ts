@@ -22,7 +22,7 @@ function embed(provider: { id: string; rank: number }) {
             type: 'file',
             qualities: {
               unknown: {
-                type: 'mp4', // must be "mp4" for TS types
+                type: 'mkv', // must be "mp4" for TS types
                 url: ctx.url,
               },
             },
