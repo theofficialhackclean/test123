@@ -29,7 +29,7 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
     try {
       // Build a direct Webtor embed URL
       const magnet = getMagnetUrl(topStream.infoHash, topStream.name);
-      const webtorUrl = `http://localhost/magnet/download?link=${encodeURIComponent(magnet)}`;
+      const webtorUrl = `https://webtorrent-dun.vercel.app/magnet/download?link=${encodeURIComponent(magnet)}`;
 
       embeds.push({
         embedId: `webtor-${category.replace('p', '')}`,
