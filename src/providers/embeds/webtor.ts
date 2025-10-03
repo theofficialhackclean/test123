@@ -1,5 +1,5 @@
 import { flags } from '@/entrypoint/utils/targets';
-import { makeEmbed, type EmbedOutput } from '@/providers/base';
+import { makeEmbed } from '@/providers/base';
 
 const providers = [
   { id: 'webtor-1080', rank: 80 },
@@ -13,13 +13,22 @@ function embed(provider: { id: string; rank: number }) {
     id: provider.id,
     name: `Webtor ${provider.id.split('-')[1].toUpperCase()}`,
     rank: provider.rank,
-    async scrape(ctx): Promise<EmbedOutput> {
+    async scrape(ctx) {
+      // detect file type from URL
+      const extension = ctx.url.split('.').pop()?.toLowerCase() || 'mp4';
+      const fileType = extension === 'mkv' ? 'mkv' : 'mp4';
+
       return {
         stream: [
           {
             id: 'primary',
-            type: 'file' as const,
-            file: ctx.url, // ✅ use "file" instead of "url"
+            type: 'file',
+            qualities: {
+              unknown: {
+                type: fileType,
+                url: ctx.url,
+              },
+            },
             flags: [flags.CORS_ALLOWED],
             captions: [],
           },
