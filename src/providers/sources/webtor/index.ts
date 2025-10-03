@@ -1,7 +1,8 @@
 import { flags } from '@/entrypoint/utils/targets';
 import { SourcererOutput, makeSourcerer } from '@/providers/base';
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
-import { categorizeStreams, getTopStreamsBySeeders, getMagnetUrl } from './common';
+
+import { categorizeStreams, getMagnetUrl, getTopStreamsBySeeders } from './common';
 import { Response } from './types';
 
 async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
@@ -10,7 +11,6 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
       ? `movie/${ctx.media.imdbId}.json`
       : `series/${ctx.media.imdbId}:${ctx.media.season.number}:${ctx.media.episode.number}.json`;
 
-  // Fetch streams from torrentio
   const response: Response = await ctx
     .fetcher(
       `https://torrentio.strem.fun/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy,magnetdl,horriblesubs,nyaasi,tokyotosho,anidex/stream/${search}`
@@ -22,28 +22,23 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
   const categories = categorizeStreams(response.streams);
   const embeds: { embedId: string; url: string }[] = [];
 
-  for (const [category, streams] of Object.entries(categories)) {
+  Object.entries(categories).forEach(([category, streams]) => {
     const [topStream] = getTopStreamsBySeeders(streams, 1);
-    if (!topStream) continue;
+    if (!topStream) return;
 
     try {
-      // Build magnet link
+      // Build a direct Webtor embed URL
       const magnet = getMagnetUrl(topStream.infoHash, topStream.name);
-
-      // Build localhost endpoint
-      let localUrl = `http://localhost/magnet/download?link=${encodeURIComponent(magnet)}`;
-      if (ctx.media.type === 'show') {
-        localUrl += `&season=${ctx.media.season.number}&episode=${ctx.media.episode.number}`;
-      }
+      const webtorUrl = `http://localhost/magnet/download?link=${encodeURIComponent(magnet)}`;
 
       embeds.push({
-        embedId: `local-${category.replace('p', '')}`,
-        url: localUrl,
+        embedId: `webtor-${category.replace('p', '')}`,
+        url: webtorUrl,
       });
     } catch (error) {
-      console.error(`Failed to create local magnet URL for ${category}:`, error);
+      console.error(`Failed to create Webtor URL for ${category}:`, error);
     }
-  }
+  });
 
   ctx.progress(90);
 
