@@ -2,7 +2,7 @@ import { Flags } from '@/entrypoint/utils/targets';
 import { Caption } from '@/providers/captions';
 
 export type StreamFile = {
-  type: 'mp4';
+  type: 'mp4' | 'mkv';
   url: string;
 };
 
