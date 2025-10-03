@@ -14,10 +14,7 @@ function embed(provider: { id: string; rank: number }) {
     name: `Webtor ${provider.id.split('-')[1].toUpperCase()}`,
     rank: provider.rank,
     async scrape(ctx) {
-      // detect file type from URL
-      const extension = ctx.url.split('.').pop()?.toLowerCase() || 'mp4';
-      const fileType = extension === 'mkv' ? 'mkv' : 'mp4';
-
+      // always use 'mp4' to satisfy FileBasedStream type
       return {
         stream: [
           {
@@ -25,7 +22,7 @@ function embed(provider: { id: string; rank: number }) {
             type: 'file',
             qualities: {
               unknown: {
-                type: fileType,
+                type: 'mp4', // must be "mp4" for TS types
                 url: ctx.url,
               },
             },
