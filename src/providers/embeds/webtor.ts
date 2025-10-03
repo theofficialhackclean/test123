@@ -1,8 +1,8 @@
 import { flags } from '@/entrypoint/utils/targets';
-import { makeEmbed } from '@/providers/base';
+import { makeEmbed, type EmbedOutput } from '@/providers/base';
 
 const providers = [
-  { id: 'webtor-1080', rank: 80 }, // 1080p should be a higher rank because it loads faster
+  { id: 'webtor-1080', rank: 80 },
   { id: 'webtor-4k', rank: 79 },
   { id: 'webtor-720', rank: 78 },
   { id: 'webtor-480', rank: 77 },
@@ -13,7 +13,7 @@ function embed(provider: { id: string; rank: number }) {
     id: provider.id,
     name: `Webtor ${provider.id.split('-')[1].toUpperCase()}`,
     rank: provider.rank,
-    async scrape(ctx) {
+    async scrape(ctx): Promise<EmbedOutput> {
       return {
         streams: [
           {
@@ -24,6 +24,8 @@ function embed(provider: { id: string; rank: number }) {
             captions: [],
           },
         ],
+        embeds: [],
+        subtitles: [],
       };
     },
   });
