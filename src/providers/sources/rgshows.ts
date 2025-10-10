@@ -56,7 +56,7 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
         type: 'hls',
         playlist: streamUrl,
         headers: m3u8Headers,
-        flags: [],
+        flags: [flags.CORS_ALLOWED],
         captions: [],
       },
     ],
@@ -67,7 +67,7 @@ export const rgshowsScraper = makeSourcerer({
   id: 'rgshows',
   name: 'RGShows',
   rank: 173,
-  flags: [],
+  flags: [flags.CORS_ALLOWED],
   scrapeMovie: comboScraper,
   scrapeShow: comboScraper,
 });
