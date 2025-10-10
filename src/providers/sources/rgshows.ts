@@ -1,4 +1,5 @@
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
+import { flags } from '@/entrypoint/utils/targets';
 import { NotFoundError } from '@/utils/errors';
 
 import { SourcererOutput, makeSourcerer } from '../base';
