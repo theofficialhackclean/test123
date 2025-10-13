@@ -7,8 +7,8 @@ import { SourcererOutput, makeSourcerer } from '../base';
 const baseUrl = 'api.rgshows.me';
 
 const headers = {
-  referer: 'https://rgshows.me/',
-  origin: 'https://rgshows.me',
+  referer: 'https://rgshows.ru/',
+  origin: 'https://rgshows.ru',
   'User-Agent':
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
   // 🚫 Disable caching at request level
