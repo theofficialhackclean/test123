@@ -2,7 +2,7 @@ import { flags } from '@/entrypoint/utils/targets';
 import { SourcererOutput, makeSourcerer } from '@/providers/base';
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 import { categorizeStreams, getMagnetUrl, getTopStreamsBySeeders } from './common';
-import { Response } from './types';
+import { Response, Stream } from './types';
 
 async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
   const search =
@@ -10,48 +10,43 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
       ? `movie/${ctx.media.imdbId}.json`
       : `series/${ctx.media.imdbId}:${ctx.media.season.number}:${ctx.media.episode.number}.json`;
 
-  // fetch torrentio results
-  const response: Response = await ctx
-    .fetcher(
-      `https://torrentio.strem.fun/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy,magnetdl,horriblesubs,nyaasi,tokyotosho,anidex/stream/${search}`
-    )
-    .then((res) => (typeof res === 'string' ? JSON.parse(res) : res));
+  const rawResponse = await ctx.fetcher(
+    `https://torrentio.strem.fun/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy,magnetdl,horriblesubs,nyaasi,tokyotosho,anidex/stream/${search}`
+  );
+
+  const response: Response = typeof rawResponse === 'string' ? JSON.parse(rawResponse) : rawResponse;
 
   ctx.progress(40);
 
-  // 🧠 Filter streams to ONLY include MP4s
-  const mp4Streams = response.streams.filter((s: any) => {
-    // Check container/type first
-    if (s.container?.toLowerCase() === 'mp4' || s.type?.toLowerCase() === 'video/mp4') return true;
-    // Fallback: check filename ends with .mp4
-    if (s.name?.toLowerCase().endsWith('.mp4')) return true;
-    return false;
+  // Filter only MP4 streams
+  const mp4Streams: Stream[] = response.streams.filter((s: Stream) => {
+    const container = s.container?.toLowerCase();
+    const type = s.type?.toLowerCase();
+    const name = s.name?.toLowerCase();
+
+    return container === 'mp4' || type === 'video/mp4' || name?.endsWith('.mp4');
   });
 
-  // overwrite response.streams so JSON has ONLY MP4s
   response.streams = mp4Streams;
 
-  // if no MP4s found, return empty
   if (mp4Streams.length === 0) {
     ctx.progress(100);
     return { embeds: [] };
   }
 
-  // categorize filtered MP4 streams
   const categories = categorizeStreams(mp4Streams);
   const embeds: { embedId: string; url: string }[] = [];
 
-  // loop through categories and generate Webtor links
   for (const [category, streams] of Object.entries(categories)) {
     const [topStream] = getTopStreamsBySeeders(streams, 1);
-    if (!topStream) continue;
+    if (!topStream?.infoHash || !topStream?.name) continue;
 
     try {
       const magnet = getMagnetUrl(topStream.infoHash, topStream.name);
       const webtorUrl = `https://webtorrent-dun.vercel.app/magnet/download?link=${encodeURIComponent(magnet)}`;
 
       embeds.push({
-        embedId: `webtor-${category.replace('p', '')}`,
+        embedId: `webtor-${category.replace(/p$/, '')}`,
         url: webtorUrl,
       });
     } catch (error) {
@@ -60,7 +55,6 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
   }
 
   ctx.progress(100);
-
   return { embeds };
 }
 
