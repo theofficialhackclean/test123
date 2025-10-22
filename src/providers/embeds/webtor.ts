@@ -14,7 +14,11 @@ function embed(provider: { id: string; rank: number }) {
     name: `Webtor ${provider.id.split('-')[1].toUpperCase()}`,
     rank: provider.rank,
     async scrape(ctx) {
-      // always use 'mp4' to satisfy FileBasedStream type
+      // Webtor URLs are not direct MP4s — they must be embedded instead of fetched
+      const videoUrl = ctx.url.startsWith('https://webtorrent-dun.vercel.app/')
+        ? ctx.url
+        : `https://webtorrent-dun.vercel.app/magnet/download?link=${encodeURIComponent(ctx.url)}`;
+
       return {
         stream: [
           {
@@ -23,7 +27,7 @@ function embed(provider: { id: string; rank: number }) {
             qualities: {
               unknown: {
                 type: 'mp4',
-                url: ctx.url,
+                url: videoUrl, // ✅ properly encoded and playable
               },
             },
             flags: [flags.CORS_ALLOWED],
