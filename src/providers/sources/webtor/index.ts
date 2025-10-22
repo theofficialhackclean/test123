@@ -10,7 +10,7 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
       ? `movie/${ctx.media.imdbId}.json`
       : `series/${ctx.media.imdbId}:${ctx.media.season.number}:${ctx.media.episode.number}.json`;
 
-  // get torrentio results
+  // fetch torrentio results
   const response: Response = await ctx
     .fetcher(
       `https://torrentio.strem.fun/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy,magnetdl,horriblesubs,nyaasi,tokyotosho,anidex/stream/${search}`
@@ -19,29 +19,30 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
 
   ctx.progress(40);
 
-  // 🧠 Filter streams to only include MP4s
-  const mp4Streams = response.streams.filter((s: any) =>
-    s.name?.toLowerCase().includes('.mp4')
+  // 🧠 Filter streams to ONLY include actual MP4s
+  const mp4Streams = response.streams.filter(
+    (s: any) => s.type?.toLowerCase() === 'video/mp4' || s.container?.toLowerCase() === 'mp4'
   );
 
-  // If no MP4 streams found, fallback to all (to avoid total failure)
-  const filteredResponse = {
-    ...response,
-    streams: mp4Streams.length > 0 ? mp4Streams : response.streams,
-  };
+  // overwrite response.streams so JSON has ONLY MP4s
+  response.streams = mp4Streams;
 
-  const categories = categorizeStreams(filteredResponse.streams);
+  // if no MP4s found, return empty
+  if (mp4Streams.length === 0) {
+    ctx.progress(100);
+    return { embeds: [] };
+  }
+
+  const categories = categorizeStreams(mp4Streams);
   const embeds: { embedId: string; url: string }[] = [];
 
-  // loop through stream categories
+  // loop through categories
   for (const [category, streams] of Object.entries(categories)) {
     const [topStream] = getTopStreamsBySeeders(streams, 1);
     if (!topStream) continue;
 
     try {
       const magnet = getMagnetUrl(topStream.infoHash, topStream.name);
-
-      // ✅ use your webtorrent-dun endpoint directly, do NOT fetch it
       const webtorUrl = `https://webtorrent-dun.vercel.app/magnet/download?link=${encodeURIComponent(magnet)}`;
 
       embeds.push({
