@@ -10,34 +10,48 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
       ? `movie/${ctx.media.imdbId}.json`
       : `series/${ctx.media.imdbId}:${ctx.media.season.number}:${ctx.media.episode.number}.json`;
 
-  const response: Response = await ctx
-    .fetcher(
+  let response: Response | null = null;
+
+  try {
+    const res = await ctx.fetcher(
       `https://torrentio.strem.fun/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy,magnetdl,horriblesubs,nyaasi,tokyotosho,anidex/stream/${search}`
-    )
-    .then((res) => (typeof res === 'string' ? JSON.parse(res) : res));
+    );
+
+    response = typeof res === 'string' ? JSON.parse(res) : res;
+  } catch (err) {
+    console.error('[WebtorScraper] Failed to fetch torrent data:', err);
+    return { embeds: [] };
+  }
+
+  if (!response?.streams?.length) {
+    console.warn('[WebtorScraper] No streams found for', search);
+    return { embeds: [] };
+  }
 
   ctx.progress(50);
 
   const categories = categorizeStreams(response.streams);
   const embeds: { embedId: string; url: string }[] = [];
 
-  Object.entries(categories).forEach(([category, streams]) => {
+  for (const [category, streams] of Object.entries(categories)) {
     const [topStream] = getTopStreamsBySeeders(streams, 1);
-    if (!topStream) return;
+    if (!topStream) continue;
 
     try {
-      // Build a direct Webtor embed URL
       const magnet = getMagnetUrl(topStream.infoHash, topStream.name);
       const webtorUrl = `https://webtorrent-dun.vercel.app/magnet/download?link=${encodeURIComponent(magnet)}`;
 
+      // Normalize category name to match embed IDs (e.g. 1080p -> webtor-1080)
+      const quality = category.replace(/p/i, '').trim();
+
       embeds.push({
-        embedId: `webtor-${category.replace('p', '')}`,
+        embedId: `webtor-${quality}`,
         url: webtorUrl,
       });
     } catch (error) {
-      console.error(`Failed to create Webtor URL for ${category}:`, error);
+      console.error(`[WebtorScraper] Failed to create Webtor URL for ${category}:`, error);
     }
-  });
+  }
 
   ctx.progress(90);
 
