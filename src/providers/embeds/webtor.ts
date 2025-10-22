@@ -15,9 +15,9 @@ function embed(provider: { id: string; rank: number }) {
     rank: provider.rank,
     async scrape(ctx) {
       // Webtor URLs are not direct MP4s — they must be embedded instead of fetched
-      const videoUrl = ctx.url.startsWith('https://webtorrent-dun.vercel.app/')
+      const videoUrl = ctx.url.startsWith('http://82.22.77.247:3000/')
         ? ctx.url
-        : `https://webtorrent-dun.vercel.app/magnet/download?link=${encodeURIComponent(ctx.url)}`;
+        : `http://82.22.77.247:3000/magnet/download?link=${encodeURIComponent(ctx.url)}`;
 
       return {
         stream: [
