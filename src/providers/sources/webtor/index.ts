@@ -1,7 +1,6 @@
 import { flags } from '@/entrypoint/utils/targets';
 import { SourcererOutput, makeSourcerer } from '@/providers/base';
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
-
 import { categorizeStreams, getMagnetUrl, getTopStreamsBySeeders } from './common';
 import { Response } from './types';
 
