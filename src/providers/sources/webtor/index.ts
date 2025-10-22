@@ -17,9 +17,20 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
     )
     .then((res) => (typeof res === 'string' ? JSON.parse(res) : res));
 
-  ctx.progress(50);
+  ctx.progress(40);
 
-  const categories = categorizeStreams(response.streams);
+  // 🧠 Filter streams to only include MP4s
+  const mp4Streams = response.streams.filter((s: any) =>
+    s.name?.toLowerCase().includes('.mp4')
+  );
+
+  // If no MP4 streams found, fallback to all (to avoid total failure)
+  const filteredResponse = {
+    ...response,
+    streams: mp4Streams.length > 0 ? mp4Streams : response.streams,
+  };
+
+  const categories = categorizeStreams(filteredResponse.streams);
   const embeds: { embedId: string; url: string }[] = [];
 
   // loop through stream categories
