@@ -19,10 +19,14 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
 
   ctx.progress(40);
 
-  // 🧠 Filter streams to ONLY include actual MP4s
-  const mp4Streams = response.streams.filter(
-    (s: any) => s.type?.toLowerCase() === 'video/mp4' || s.container?.toLowerCase() === 'mp4'
-  );
+  // 🧠 Filter streams to ONLY include MP4s
+  const mp4Streams = response.streams.filter((s: any) => {
+    // Check container/type first
+    if (s.container?.toLowerCase() === 'mp4' || s.type?.toLowerCase() === 'video/mp4') return true;
+    // Fallback: check filename ends with .mp4
+    if (s.name?.toLowerCase().endsWith('.mp4')) return true;
+    return false;
+  });
 
   // overwrite response.streams so JSON has ONLY MP4s
   response.streams = mp4Streams;
@@ -33,10 +37,11 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
     return { embeds: [] };
   }
 
+  // categorize filtered MP4 streams
   const categories = categorizeStreams(mp4Streams);
   const embeds: { embedId: string; url: string }[] = [];
 
-  // loop through categories
+  // loop through categories and generate Webtor links
   for (const [category, streams] of Object.entries(categories)) {
     const [topStream] = getTopStreamsBySeeders(streams, 1);
     if (!topStream) continue;
