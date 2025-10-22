@@ -31,7 +31,7 @@ export function getMagnetUrl(infoHash: string, name: string): string {
 
 export function constructProxyUrl(magnetUrl: string): string {
   const encodedMagnet = encodeURIComponent(magnetUrl);
-  return `https://webtorrent-dun.vercel.app/magnet/download?link=${encodedMagnet}`; // Thanks to Custom and DebateMyRoomba for this API
+  return `http://82.22.77.247:3000/magnet/download?link=${encodedMagnet}`; // Thanks to Custom and DebateMyRoomba for this API
 }
 
 export function categorizeStreams(streams: Stream[]): Record<string, Stream[]> {
