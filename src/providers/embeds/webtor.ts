@@ -8,27 +8,21 @@ const providers = [
   { id: 'webtor-480', rank: 77 },
 ];
 
-function embed(provider: { id: string; rank: number }) {
+function embed(provider: { id: string; name: string; rank: number; disabled?: boolean }) {
   return makeEmbed({
     id: provider.id,
-    name: `Webtor ${provider.id.split('-')[1].toUpperCase()}`,
+    name: provider.name,
+    disabled: provider.disabled,
     rank: provider.rank,
     async scrape(ctx) {
-      // Webtor URLs are not direct MP4s — they must be embedded instead of fetched
-      const videoUrl = ctx.url.startsWith('http://82.22.77.247:3000/')
-        ? ctx.url
-        : `http://82.22.77.247:3000/magnet/download?link=${encodeURIComponent(ctx.url)}`;
-
+      const [url, quality] = ctx.url.split('|');
       return {
         stream: [
           {
             id: 'primary',
             type: 'file',
             qualities: {
-              unknown: {
-                type: 'mp4',
-                url: videoUrl, // ✅ properly encoded and playable
-              },
+              [getValidQualityFromString(quality || '')]: { url, type: 'mp4' },
             },
             flags: [flags.CORS_ALLOWED],
             captions: [],
