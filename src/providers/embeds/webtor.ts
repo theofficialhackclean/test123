@@ -1,6 +1,5 @@
 import { flags } from '@/entrypoint/utils/targets';
 import { makeEmbed } from '@/providers/base';
-import { getValidQualityFromString } from '@/utils/quality';
 
 const providers = [
   { id: 'webtor-1080', rank: 80 },
@@ -9,21 +8,23 @@ const providers = [
   { id: 'webtor-480', rank: 77 },
 ];
 
-function embed(provider: { id: string; name: string; rank: number; disabled?: boolean }) {
+function embed(provider: { id: string; rank: number }) {
   return makeEmbed({
     id: provider.id,
-    name: provider.name,
-    disabled: provider.disabled,
+    name: `Webtor ${provider.id.split('-')[1].toUpperCase()}`,
     rank: provider.rank,
     async scrape(ctx) {
-      const [url, quality] = ctx.url.split('|');
+      // always use 'mp4' to satisfy FileBasedStream type
       return {
         stream: [
           {
             id: 'primary',
             type: 'file',
             qualities: {
-              [getValidQualityFromString(quality || '')]: { url, type: 'mp4' },
+              unknown: {
+                type: 'mp4',
+                url: ctx.url,
+              },
             },
             flags: [flags.CORS_ALLOWED],
             captions: [],
