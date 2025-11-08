@@ -35,7 +35,7 @@ async function vidsrcScrape(ctx: MovieScrapeContext | ShowScrapeContext): Promis
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0';
   const embedHtml = await ctx.proxiedFetcher<string>(embedUrl, {
     headers: {
-      Referer: 'https://vidsrc.net/',
+      Referer: 'https://vidsrc-embed.ru/',
       'User-Agent': UA,
     },
   });
