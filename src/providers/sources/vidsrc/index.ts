@@ -7,10 +7,10 @@ import { createM3U8ProxyUrl } from '@/utils/proxy';
 
 import { decode, mirza } from './decrypt';
 
-// Default player configuration
-const o = {
-  y: 'xx??x?=xx?xx?=',
-  u: '#1RyJzl3JYmljm0mkJWOGYWNyI6MfwVNGYXmj9uQj5tQkeYIWoxLCJXNkawOGF5QZ9sQj1YIWowLCJXO20VbVJ1OZ11QGiSlni0QG9uIn19',
+// Player configuration
+const playerConfig = {
+  key: 'xx??x?=xx?xx?=',
+  encodedData: '#1RyJzl3JYmljm0mkJWOGYWNyI6MfwVNGYXmj9uQj5tQkeYIWoxLCJXNkawOGF5QZ9sQj1YIWowLCJXO20VbVJ1OZ11QGiSlni0QG9uIn19',
 };
 
 async function vidsrcScrape(ctx: MovieScrapeContext | ShowScrapeContext): Promise<SourcererOutput> {
@@ -32,11 +32,12 @@ async function vidsrcScrape(ctx: MovieScrapeContext | ShowScrapeContext): Promis
     : `https://vidsrc-embed.ru/embed/${imdbId}`;
 
   ctx.progress(10);
-const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0';
+
+  const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0';
   const embedHtml = await ctx.proxiedFetcher<string>(embedUrl, {
     headers: {
       Referer: 'https://vidsrc.net/',
-      'User-Agent': UA,
+      'User-Agent': userAgent,
     },
   });
 
@@ -51,7 +52,7 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 F
   ctx.progress(50);
 
   const rcpHtml = await ctx.proxiedFetcher<string>(rcpUrl, {
-    headers: { Referer: embedUrl, 'User-Agent': UA },
+    headers: { Referer: embedUrl, 'User-Agent': userAgent },
   });
 
   // Find the script with prorcp
@@ -63,31 +64,31 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 F
   ctx.progress(70);
 
   const finalHtml = await ctx.proxiedFetcher<string>(prorcpUrl, {
-    headers: { Referer: rcpUrl, 'User-Agent': UA },
+    headers: { Referer: rcpUrl, 'User-Agent': userAgent },
   });
 
   // Find script containing Playerjs
   const scripts = finalHtml.split('<script');
-  let scriptWithPlayer = '';
+  let playerScript = '';
 
   for (const script of scripts) {
     if (script.includes('Playerjs')) {
-      scriptWithPlayer = script;
+      playerScript = script;
       break;
     }
   }
 
-  if (!scriptWithPlayer) throw new NotFoundError('No Playerjs config found');
+  if (!playerScript) throw new NotFoundError('No Playerjs config found');
 
-  const m3u8Match = scriptWithPlayer.match(/file\s*:\s*['"]([^'"]+)['"]/);
+  const m3u8Match = playerScript.match(/file\s*:\s*['"]([^'"]+)['"]/);
   if (!m3u8Match) throw new NotFoundError('No file field in Playerjs');
 
   let streamUrl = m3u8Match[1];
 
   if (!streamUrl.includes('.m3u8')) {
-    // Check if we need to decode the URL
-    const v = JSON.parse(decode(o.u));
-    streamUrl = mirza(streamUrl, v);
+    // Decode the URL if it's not already an m3u8
+    const decodedConfig = JSON.parse(decode(playerConfig.encodedData));
+    streamUrl = mirza(streamUrl, decodedConfig);
   }
 
   ctx.progress(90);
