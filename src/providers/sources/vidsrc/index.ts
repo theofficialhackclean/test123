@@ -44,7 +44,7 @@ async function vidsrcScrape(ctx: MovieScrapeContext | ShowScrapeContext): Promis
 
   ctx.progress(30);
 
-  // ✅ FIXED — Search for any iframe, not specific ID
+  // ⬇️ Any iframe — vidsrc keeps changing IDs
   const iframeMatch = embedHtml.match(/<iframe[^>]*src="([^"]+)"/i);
   if (!iframeMatch) throw new NotFoundError("iframe not found");
 
@@ -58,11 +58,11 @@ async function vidsrcScrape(ctx: MovieScrapeContext | ShowScrapeContext): Promis
     headers: { Referer: embedUrl, "User-Agent": UA },
   });
 
-  // ✅ FIXED — search for <script src="">
+  // ⬇️ First script tag
   const scriptMatch = rcpHtml.match(/<script[^>]+src="([^"]+)"/i);
   if (!scriptMatch) throw new NotFoundError("script not found");
 
-  const prorcpUrl = scriptMatch[1]; // ✅ No forced domain prefix
+  const prorcpUrl = scriptMatch[1];
 
   ctx.progress(70);
 
@@ -70,25 +70,16 @@ async function vidsrcScrape(ctx: MovieScrapeContext | ShowScrapeContext): Promis
     headers: { Referer: rcpUrl, "User-Agent": UA },
   });
 
-  // ✅ Extract PlayerJS config
+  // ⬇️ Find script containing PlayerJS config
   const scripts = finalHtml.split("<script");
-  let scriptWithPlayer = "";
+  const playerScript = scripts.find((s) => s.includes("Playerjs"));
+  if (!playerScript) throw new NotFoundError("No PlayerJS config");
 
-  for (const script of scripts) {
-    if (script.includes("Playerjs")) {
-      scriptWithPlayer = script;
-      break;
-    }
-  }
-
-  if (!scriptWithPlayer) throw new NotFoundError("No PlayerJS config");
-
-  // ✅ Better regex for "file"
-  let m3u8Match = scriptWithPlayer.match(/file["']?\s*:\s*["']([^"']+)/);
+  // ⬇️ Extract file: "url"
+  let m3u8Match = playerScript.match(/file["']?\s*:\s*["']([^"']+)/);
 
   if (!m3u8Match) {
-    // fallback possible array sources
-    m3u8Match = scriptWithPlayer.match(/sources\s*:\s*\[\s*\{file["']?\s*:\s*["']([^"']+)/);
+    m3u8Match = playerScript.match(/sources\s*:\s*\[\s*\{[^}]*file["']?\s*:\s*["']([^"']+)/);
   }
 
   if (!m3u8Match) {
@@ -97,7 +88,7 @@ async function vidsrcScrape(ctx: MovieScrapeContext | ShowScrapeContext): Promis
 
   let streamUrl = m3u8Match[1];
 
-  // ✅ decode only if needed
+  // ⬇️ Decrypt only if necessary
   if (!streamUrl.includes(".m3u8")) {
     try {
       const v = JSON.parse(decode(o.u));
