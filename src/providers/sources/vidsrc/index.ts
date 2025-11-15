@@ -4,7 +4,6 @@ import { SourcererOutput, makeSourcerer } from '@/providers/base';
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 import { NotFoundError } from '@/utils/errors';
 import { createM3U8ProxyUrl } from '@/utils/proxy';
-import type { ShowMedia } from '@/entrypoint/utils/media';
 import { decode, mirza } from './decrypt';
 
 const o = {
