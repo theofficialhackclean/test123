@@ -25,6 +25,10 @@ async function vidsrcScrape(
     const show = ctx.media as ShowMedia;
     season = show.season?.number;
     episode = show.episode?.number;
+    
+    if (season === undefined || episode === undefined) {
+      throw new NotFoundError("Season or episode number not found");
+    }
   }
 
   const embedUrl = isShow
@@ -49,9 +53,12 @@ async function vidsrcScrape(
   const iframeMatch = embedHtml.match(/<iframe[^>]*src="([^"]+)"/i);
   if (!iframeMatch) throw new NotFoundError("iframe not found");
 
-  const rcpUrl = iframeMatch[1].startsWith("//")
-    ? `https:${iframeMatch[1]}`
-    : iframeMatch[1];
+  let rcpUrl = iframeMatch[1];
+  if (rcpUrl.startsWith("//")) {
+    rcpUrl = `https:${rcpUrl}`;
+  } else if (!rcpUrl.startsWith("http")) {
+    rcpUrl = `https://vidsrc-embed.ru${rcpUrl.startsWith('/') ? '' : '/'}${rcpUrl}`;
+  }
 
   ctx.progress(50);
 
@@ -59,13 +66,61 @@ async function vidsrcScrape(
     headers: { Referer: embedUrl, "User-Agent": UA },
   });
 
-  // Extract script src
-  const scriptMatch = rcpHtml.match(/<script[^>]+src="([^"]+)"/i);
-  if (!scriptMatch) throw new NotFoundError("script not found");
+  // Extract script src - look for both inline and external scripts
+  let prorcpUrl: string | null = null;
+  
+  // Try to find external script first
+  const externalScriptMatch = rcpHtml.match(/<script[^>]+src="([^"]+)"/i);
+  if (externalScriptMatch) {
+    prorcpUrl = externalScriptMatch[1];
+  } else {
+    // Look for inline script with PlayerJS config
+    const inlineScriptMatch = rcpHtml.match(/<script[^>]*>([\s\S]*?Playerjs[\s\S]*?)<\/script>/i);
+    if (inlineScriptMatch) {
+      // If we found inline script with PlayerJS, we can parse it directly
+      const playerScript = inlineScriptMatch[1];
+      const m3u8Match = playerScript.match(/file["']?\s*:\s*["']([^"']+)/) || 
+                        playerScript.match(/sources\s*:\s*\[\s*\{[^}]*file["']?\s*:\s*["']([^"']+)/);
+      
+      if (m3u8Match) {
+        let streamUrl = m3u8Match[1];
+        
+        // Decode if encrypted
+        if (!streamUrl.includes(".m3u8")) {
+          try {
+            const v = JSON.parse(decode(o.u));
+            streamUrl = mirza(streamUrl, v);
+          } catch (_) {
+            // Continue with original URL if decoding fails
+          }
+        }
 
-  let prorcpUrl = scriptMatch[1];
+        ctx.progress(90);
 
-  // ✅ FIX — convert relative URLs to absolute
+        const headers = {
+          referer: "https://cloudnestra.com/",
+          origin: "https://cloudnestra.com",
+        };
+
+        return {
+          stream: [
+            {
+              id: "vidsrc-cloudnestra",
+              type: "hls",
+              playlist: createM3U8ProxyUrl(streamUrl, headers),
+              captions: [],
+              flags: [flags.CORS_ALLOWED],
+            },
+          ],
+          embeds: [],
+        };
+      }
+    }
+  }
+
+  if (!prorcpUrl) throw new NotFoundError("script not found");
+
+  // Convert relative URLs to absolute
   if (prorcpUrl.startsWith("//")) {
     prorcpUrl = "https:" + prorcpUrl;
   } else if (prorcpUrl.startsWith("/")) {
@@ -84,13 +139,18 @@ async function vidsrcScrape(
   const playerScript = scripts.find((s) => s.includes("Playerjs"));
   if (!playerScript) throw new NotFoundError("No PlayerJS config");
 
-  // Extract file source
+  // Extract file source with multiple pattern attempts
   let m3u8Match = playerScript.match(/file["']?\s*:\s*["']([^"']+)/);
 
   if (!m3u8Match) {
     m3u8Match = playerScript.match(
       /sources\s*:\s*\[\s*\{[^}]*file["']?\s*:\s*["']([^"']+)/
     );
+  }
+
+  // Try alternative patterns
+  if (!m3u8Match) {
+    m3u8Match = playerScript.match(/file\s*:\s*['"]([^'"]+)['"]/);
   }
 
   if (!m3u8Match) throw new NotFoundError("No playable stream found");
@@ -102,7 +162,9 @@ async function vidsrcScrape(
     try {
       const v = JSON.parse(decode(o.u));
       streamUrl = mirza(streamUrl, v);
-    } catch (_) {}
+    } catch (_) {
+      // Continue with original URL if decoding fails
+    }
   }
 
   ctx.progress(90);
