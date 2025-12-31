@@ -28,8 +28,8 @@ async function vidsrcScrape(ctx: MovieScrapeContext | ShowScrapeContext): Promis
   }
 
   const embedUrl = isShow
-    ? `https://vidsrc-embed.ru/embed/tv?imdb=${imdbId}&season=${season}&episode=${episode}`
-    : `https://vidsrc-embed.ru/embed/${imdbId}`;
+    ? `https://vidsrc.icu/embed/tv/${tmdbId}/${season}/${episode}`
+    : `https://vidsrc.icu/embed/movie/${imdbId}`;
 
   ctx.progress(10);
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0';
