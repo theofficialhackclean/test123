@@ -28,7 +28,7 @@ async function vidsrcScrape(ctx: MovieScrapeContext | ShowScrapeContext): Promis
   }
 
   const embedUrl = isShow
-    ? `https://vidsrc.icu/embed/tv/${tmdbId}/${season}/${episode}`
+    ? `https://vidsrc.icu/embed/tv/${imdbId}/${season}/${episode}`
     : `https://vidsrc.icu/embed/movie/${imdbId}`;
 
   ctx.progress(10);
