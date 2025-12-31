@@ -1,20 +1,16 @@
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
-import { flags } from '@/entrypoint/utils/targets';
 import { NotFoundError } from '@/utils/errors';
 
 import { SourcererOutput, makeSourcerer } from '../base';
 
-const baseUrl = 'api.rgshows.me';
+const baseUrl = 'api.rgshows.ru';
 
 const headers = {
   referer: 'https://rgshows.ru/',
   origin: 'https://rgshows.ru',
+  host: baseUrl,
   'User-Agent':
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-  // 🚫 Disable caching at request level
-  'Cache-Control': 'no-cache, no-store, must-revalidate',
-  Pragma: 'no-cache',
-  Expires: '0',
 };
 
 async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
@@ -36,17 +32,14 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
   }
 
   const streamUrl = res.stream.url;
-
-  // ✅ Fixed headers for HLS chunks — no manual "host"
+  const streamHost = new URL(streamUrl).host;
   const m3u8Headers = {
-      'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-      referer: 'https://rgshows.me/',
-      accept: '*/*',
-      'accept-encoding': 'gzip, deflate, br',
-      connection: 'keep-alive',
-      range: 'bytes=0-',
-    };
+    ...headers,
+    host: streamHost,
+    origin: 'https://www.rgshows.ru',
+    referer: 'https://www.rgshows.ru/',
+  };
+
   ctx.progress(100);
 
   return {
@@ -57,7 +50,7 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
         type: 'hls',
         playlist: streamUrl,
         headers: m3u8Headers,
-        flags: [flags.CORS_ALLOWED],
+        flags: [],
         captions: [],
       },
     ],
@@ -67,8 +60,8 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
 export const rgshowsScraper = makeSourcerer({
   id: 'rgshows',
   name: 'RGShows',
-  rank: 173,
-  flags: [flags.CORS_ALLOWED],
+  rank: 176,
+  flags: [],
   scrapeMovie: comboScraper,
   scrapeShow: comboScraper,
 });
