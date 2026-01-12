@@ -93,6 +93,7 @@ export function gatherAllSources(): Array<Sourcerer> {
     insertunitScraper,
     soaperTvScraper,
     autoembedScraper,
+    tugaflixScraper,
     ee3Scraper,
     fsharetvScraper,
     vidsrcsuScraper,
@@ -115,7 +116,6 @@ export function gatherAllSources(): Array<Sourcerer> {
     lookmovieScraper,
     rgshowsScraper,
     vidsrcScraper,
-     tugaflixScraper,
   ];
 }
 
