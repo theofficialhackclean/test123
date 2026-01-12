@@ -39,7 +39,7 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
       const magnet = getMagnetUrl(topStream.infoHash, topStream.name);
 
       // use your webtorrent-dun endpoint directly
-      const webtorUrl = `http://82.22.77.247:3000/magnet/download?link=${encodeURIComponent(magnet)}`;
+      const webtorUrl = `https://webtorrent-dun.vercel.app/magnet/download?link=${encodeURIComponent(magnet)}`;
 
       embeds.push({
         embedId: `webtor-${category.replace(/p$/, '')}`,
