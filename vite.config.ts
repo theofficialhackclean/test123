@@ -24,9 +24,9 @@ export default defineConfig((env) => ({
   build: {
     minify: false,
     rollupOptions: {
-      external: Object.keys(pkg.dependencies),
+      external: Object.keys(pkg.dependencies).filter((dep) => dep !== 'wyzie-lib'),
       output: {
-        globals: Object.fromEntries(Object.keys(pkg.dependencies).map((v) => [v, v])),
+        globals: Object.fromEntries(Object.keys(pkg.dependencies).filter((dep) => dep !== 'wyzie-lib').map((v) => [v, v])),
       },
     },
     outDir: 'lib',
