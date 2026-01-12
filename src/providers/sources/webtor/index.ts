@@ -25,8 +25,8 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
   // loop through stream categories
   for (const [category, streams] of Object.entries(categories)) {
     // Filter streams to only include MP4 files
-    const mp4Streams = streams.filter(stream => 
-      stream.name.toLowerCase().includes('.mp4') || 
+    const mp4Streams = streams.filter((stream: any) => 
+      stream.name?.toLowerCase().includes('.mp4') || 
       stream.title?.toLowerCase().includes('.mp4')
     );
 
@@ -38,11 +38,11 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
     try {
       const magnet = getMagnetUrl(topStream.infoHash, topStream.name);
 
-      // ✅ use your webtorrent-dun endpoint directly, do NOT fetch it
+      // use your webtorrent-dun endpoint directly
       const webtorUrl = `http://82.22.77.247:3000/magnet/download?link=${encodeURIComponent(magnet)}`;
 
       embeds.push({
-        embedId: `webtor-${category.replace('p', '')}`,
+        embedId: `webtor-${category.replace(/p$/, '')}`,
         url: webtorUrl,
       });
     } catch (error) {
