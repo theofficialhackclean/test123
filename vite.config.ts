@@ -13,6 +13,7 @@ export default defineConfig((env) => ({
     env.mode !== 'test' && eslintPlugin(),
     dts({
       rollupTypes: true,
+      exclude: ['wyzie-lib'],
     }),
   ],
   resolve: {
