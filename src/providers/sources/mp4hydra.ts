@@ -32,14 +32,6 @@ async function movieScraper(ctx: MovieScrapeContext): Promise<SourcererOutput> {
     data = await tryFetchStreams(ctx, slug, 'movie');
   }
 
-  // If still no results, try with original title
-  if ((!data || !data.playlist || data.playlist.length === 0) && ctx.media.title !== ctx.media.title) {
-    ctx.progress(60);
-    const originalSlug = generateSlug(ctx.media.title);
-    const originalSlugWithYear = ctx.media.releaseYear ? `${originalSlug}-${ctx.media.releaseYear}` : originalSlug;
-    data = await tryFetchStreams(ctx, originalSlugWithYear, 'movie');
-  }
-
   if (!data || !data.playlist || data.playlist.length === 0 || !data.servers) {
     throw new NotFoundError('No watchable item found');
   }
@@ -126,30 +118,36 @@ async function tryFetchStreams(
   episodeNum?: number
 ): Promise<{ playlist: { src: string; label: string; title?: string }[]; servers: { [key: string]: string } } | null> {
   try {
+    // Create FormData - matching the Node.js version exactly
+    const formData = new FormData();
+    formData.append('v', '8');
+    formData.append('z', JSON.stringify([
+      {
+        s: slug,
+        t: mediaType,
+        se: seasonNum,
+        ep: episodeNum,
+      },
+    ]));
+
     const data = await ctx.proxiedFetcher('/info2?v=8', {
       method: 'POST',
-      body: new URLSearchParams({
-        v: '8',
-        z: JSON.stringify([
-          {
-            s: slug,
-            t: mediaType,
-            se: seasonNum,
-            ep: episodeNum,
-          },
-        ]),
-      }),
+      body: formData,
       baseUrl,
       headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36',
-        Origin: baseUrl,
-        Referer: `${baseUrl}${mediaType}/${slug}`,
+        'Accept': '*/*',
+        'Accept-Language': 'en-GB,en-US;q=0.9,en;q=0.8',
+        'Origin': 'https://mp4hydra.org',
+        'Referer': `https://mp4hydra.org/${mediaType}/${slug}`,
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-origin',
       },
     });
 
     return data;
   } catch (error) {
+    console.error('[MP4Hydra] Error fetching streams:', error);
     return null;
   }
 }
