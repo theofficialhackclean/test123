@@ -38,6 +38,9 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
     host: streamHost,
     origin: 'https://www.rgshows.ru',
     referer: 'https://www.rgshows.ru/',
+    'Accept': '*/*',
+    'Accept-Encoding': 'identity',
+    'Connection': 'keep-alive',
   };
 
   ctx.progress(100);
@@ -52,6 +55,7 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
         headers: m3u8Headers,
         flags: [],
         captions: [],
+        preferredHeaders: m3u8Headers,
       },
     ],
   };
