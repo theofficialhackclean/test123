@@ -18,19 +18,50 @@ function generateSlug(title: string): string {
 }
 
 async function movieScraper(ctx: MovieScrapeContext): Promise<SourcererOutput> {
-  const slug = generateSlug(ctx.media.title);
-  const slugWithYear = ctx.media.releaseYear ? `${slug}-${ctx.media.releaseYear}` : slug;
+  // First, search for the movie to get the correct slug/ID
+  const searchPage = await ctx.proxiedFetcher('/search', {
+    baseUrl,
+    query: {
+      q: ctx.media.title,
+    },
+  });
 
-  ctx.progress(40);
+  ctx.progress(30);
 
-  // Try with year first
-  let data = await tryFetchStreams(ctx, slugWithYear, 'movie');
-  
-  // If that fails, try without year
-  if (!data || !data.playlist || data.playlist.length === 0) {
-    ctx.progress(50);
-    data = await tryFetchStreams(ctx, slug, 'movie');
-  }
+  const $search = load(searchPage);
+  const searchResults: { title: string; year?: number | undefined; slug: string }[] = [];
+
+  $search('.search-details').each((_, element) => {
+    const fullText = $search(element).find('a').first().text().trim();
+    const url = $search(element).find('a').attr('href');
+
+    if (!fullText || !url) return;
+
+    // Extract the slug from the URL (e.g., /movie/movie-name-year)
+    const urlParts = url.split('/').filter(x => x);
+    const slug = urlParts.length >= 2 ? urlParts[urlParts.length - 1] : null;
+    
+    if (!slug) return;
+
+    // Extract year from the title
+    const yearMatch = fullText.match(/\((\d{4})(?:\s*-\s*\d{0,4})?\)/);
+    const year = yearMatch ? parseInt(yearMatch[1], 10) : undefined;
+    
+    // Remove year information to get clean title
+    const title = fullText.replace(/\s*\(?\s*\d{4}(?:\s*-\s*\d{0,4})?\s*\)?\s*$/, '').trim();
+
+    if (!title) return;
+
+    searchResults.push({ title, year, slug });
+  });
+
+  const match = searchResults.find((x) => x && compareMedia(ctx.media, x.title, x.year));
+  if (!match) throw new NotFoundError('No watchable item found');
+
+  ctx.progress(50);
+
+  // Now fetch streams using the found slug
+  const data = await tryFetchStreams(ctx, match.slug, 'movie');
 
   if (!data || !data.playlist || data.playlist.length === 0 || !data.servers) {
     throw new NotFoundError('No watchable item found');
@@ -62,11 +93,49 @@ async function movieScraper(ctx: MovieScrapeContext): Promise<SourcererOutput> {
 }
 
 async function showScraper(ctx: ShowScrapeContext): Promise<SourcererOutput> {
-  const slug = generateSlug(ctx.media.title);
+  // First, search for the show to get the correct slug/ID
+  const searchPage = await ctx.proxiedFetcher('/search', {
+    baseUrl,
+    query: {
+      q: ctx.media.title,
+    },
+  });
 
-  ctx.progress(40);
+  ctx.progress(30);
 
-  const data = await tryFetchStreams(ctx, slug, 'tv', ctx.media.season.number, ctx.media.episode.number);
+  const $search = load(searchPage);
+  const searchResults: { title: string; year?: number | undefined; slug: string }[] = [];
+
+  $search('.search-details').each((_, element) => {
+    const fullText = $search(element).find('a').first().text().trim();
+    const url = $search(element).find('a').attr('href');
+
+    if (!fullText || !url) return;
+
+    // Extract the slug from the URL
+    const urlParts = url.split('/').filter(x => x);
+    const slug = urlParts.length >= 2 ? urlParts[urlParts.length - 1] : null;
+    
+    if (!slug) return;
+
+    // Extract year from the title
+    const yearMatch = fullText.match(/\((\d{4})(?:\s*-\s*\d{0,4})?\)/);
+    const year = yearMatch ? parseInt(yearMatch[1], 10) : undefined;
+    
+    // Remove year information to get clean title
+    const title = fullText.replace(/\s*\(?\s*\d{4}(?:\s*-\s*\d{0,4})?\s*\)?\s*$/, '').trim();
+
+    if (!title) return;
+
+    searchResults.push({ title, year, slug });
+  });
+
+  const match = searchResults.find((x) => x && compareMedia(ctx.media, x.title, x.year));
+  if (!match) throw new NotFoundError('No watchable item found');
+
+  ctx.progress(50);
+
+  const data = await tryFetchStreams(ctx, match.slug, 'tv', ctx.media.season.number, ctx.media.episode.number);
 
   if (!data || !data.playlist || data.playlist.length === 0 || !data.servers) {
     throw new NotFoundError('No watchable item found');
